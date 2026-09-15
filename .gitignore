@@ -1,0 +1,26 @@
+# Cartelle dati e risultati
+data/
+**/datasets/
+**/results/
+**/prediction/
+**/cataloghi_ambulatoriale_veneto/
+
+# File dati e modelli pesanti ovunque si trovino
+*.csv
+*.tsv
+*.xlsx
+*.parquet
+*.npy
+*.npz
+*.pt
+*.pth
+*.pkl
+*.pickle
+*.h5
+
+# Cache Python e notebook
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.DS_Store
+*.log
