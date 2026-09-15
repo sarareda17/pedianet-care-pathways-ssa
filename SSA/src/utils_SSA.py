@@ -97,7 +97,7 @@ def compute_sequence_characteristics(sequence, SEQUENCE_NAME, STATES_LABELS,cust
 
     #example: plot state 'Nessuna diagnosi' counts distribution for all sequences
     plt.figure(figsize=(10,6))
-    state_freq_per_sequence_df['Nessuna diagnosi'].value_counts().sort_index().plot(kind='bar')
+    state_freq_per_sequence_df['No Diagnosis'].value_counts().sort_index().plot(kind='bar')
     plt.title(f'State NO Frequency per Sequence: {SEQUENCE_NAME}')
     plt.xlabel('Number of times state NO appears in sequence')
     plt.ylabel('Frequency')

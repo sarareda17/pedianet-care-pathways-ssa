@@ -351,7 +351,7 @@ SEQUENCE_NAME_3 = f'seq_{CHANNEL_3}_{TIME_UNIT_3}_{SEQ_LENGTH_3}'
 #'OM' = Optimal Matching, OM_CONSTANT = Optimal Matching with constant substitution costs, 'OM_DIAG' = Optimal Matching with diagonal substitution costs, 
 #'HAM' = Hamming distance, 'HAM_CONSTANT' = Hamming distance with constant substitution costs, 
 #'DHAM' = Dynamic Hamming distance, 'LCS' = Longest Common Subsequence
-DISTANCE_METRIC = 'HAM_WIND_1_freq_NO'  
+DISTANCE_METRIC = 'LCS'  
 DISTANCE_METRIC_1= 'LCS'
 DISTANCE_METRIC_2= 'LCS'
 DISTANCE_METRIC_3= 'LCS'

@@ -1,5 +1,5 @@
 """
-Main Pipeline Orchestrator for Thesis State Sequence Analysis (SSA) & Predictive Modeling.
+Thesis pipeline for State Sequence Analysis (SSA) and Predictive Survival Modeling.
 
 ========================================================================================
 HOW TO RUN THIS PIPELINE (CLI USAGE WITH ARGPARSE):
@@ -27,12 +27,12 @@ independently using the `--step` flag:
 """
 
 import argparse
-from config import SEQUENCE_NAME, CHANNEL, DISTANCE_METRIC, NUM_CLUSTERS, MODEL[cite: 3]
+from config import SEQUENCE_NAME, CHANNEL, DISTANCE_METRIC, NUM_CLUSTERS
 
 # Core step imports from modular scripts
-from dataset_sequences import build_dataset[cite: 4]
-from sequence_analysis import run_sequence_analysis[cite: 8]
-from prediction import run_prediction[cite: 7]
+from dataset_sequences import build_dataset
+from sequence_analysis import run_sequence_analysis
+from prediction import run_prediction
 
 
 def main():
@@ -50,30 +50,30 @@ def main():
     print("\n" + "=" * 65)
     print("           THESIS BREATH: PIPELINE EXECUTION")
     print("=" * 65)
-    print(f"Target Sequence     : {SEQUENCE_NAME}")[cite: 3]
-    print(f"Active Channel      : {CHANNEL}")[cite: 3]
-    print(f"Distance Metric     : {DISTANCE_METRIC}")[cite: 3]
-    print(f"Clusters (k)        : {NUM_CLUSTERS}")[cite: 3]
-    print(f"Prediction Model    : {MODEL}")[cite: 3]
+    print(f"Target Sequence     : {SEQUENCE_NAME}")
+    print(f"Active Channel      : {CHANNEL}")
+    print(f"Distance Metric     : {DISTANCE_METRIC}")
+    print(f"Clusters (k)        : {NUM_CLUSTERS}")
+    #print(f"Prediction Model    : {MODEL}")
     print(f"Selected Step       : {args.step}")
     print("=" * 65 + "\n")
 
     # STEP 1: Sequence engineering and cohort preprocessing
     if args.step in ["all", "dataset"]:
         print(">>> [Step 1/3] Generating patient sequence trajectories...")
-        build_dataset()[cite: 4]
+        dataset_sequences = build_dataset()
         print(">>> [Step 1/3] Sequence dataset successfully created.\n")
 
     # STEP 2: Sequence metrics, distance matrices, and trajectory clustering
     if args.step in ["all", "analysis"]:
         print(">>> [Step 2/3] Running Sequence Analysis, Dissimilarity & Clustering...")
-        run_sequence_analysis()[cite: 8]
+        run_sequence_analysis()
         print(">>> [Step 2/3] Clustering and sequence profiling completed.\n")
 
     # STEP 3: Survival modeling (Cox) and risk factor evaluation
     if args.step in ["all", "predict"]:
-        print(f">>> [Step 3/3] Training and evaluating predictive model ({MODEL})...")[cite: 3]
-        run_prediction()[cite: 7]
+        print(f">>> [Step 3/3] Training and evaluating predictive model...")
+        run_prediction()
         print(">>> [Step 3/3] Predictive modeling pipeline completed.\n")
 
     print("=" * 65)
