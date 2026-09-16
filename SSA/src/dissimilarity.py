@@ -68,31 +68,31 @@ def compute_dissimilarity_matrix(metric,sequence, df_sequence,SEQUENCE_NAME,cost
     elif metric == 'HAM':
         #HAMMING DISTANCE with mismatch cost of 1
         dist=hamming_distance_matrix(df_sequence)
-    elif metric == 'HAM_WIND_1':
+    elif metric == 'HAM_WIND_2':
         #HAMMING DISTANCE with rolling windows 
         dist=hamming_windows_distance_matrix(df_sequence, window_extension=2, batch_size=500)
-    elif metric == 'HAM_WIND_1_weighted':
+    elif metric == 'HAM_WIND_2_LOG2':
         _, indel_log2 = build_om_indelslog2(STATES_LABELS, df_sequence)
         rarity_weight = dict(zip(STATES_LABELS.keys(), indel_log2))
         dist = hamming_windows_distance_matrix_weighted(df_sequence, rarity_weight, window_extension=2, batch_size=500)
-    elif metric== 'HAM_WIND_1_freq':
+    elif metric== 'HAM_WIND_2_LOG':
         #HAMMING DISTANCE with rolling windows and costs based on the frequency of the states
         _, indel_log = build_om_indelslog(STATES_LABELS, df_sequence)
         rarity_weight = dict(zip(STATES_LABELS.keys(), indel_log))
         dist = hamming_windows_distance_matrix_weighted(df_sequence, rarity_weight, window_extension=2, batch_size=500)
-    elif metric == 'HAM_WIND_1_freq_NO':
+    elif metric == 'HAM_WIND_1_LOG_NO':
         #HAMMING DISTANCE with rolling windows and costs based on the log of the frequency of the states, excluding the 'NO' state
         _, indel_log = build_om_indelslog_variant_NO(STATES_LABELS, df_sequence)
         rarity_weight = dict(zip(STATES_LABELS.keys(), indel_log))
         dist = hamming_windows_distance_matrix_weighted(df_sequence, rarity_weight, window_extension=2, batch_size=500)
-    elif metric == 'HAM_WIND_1_sqrt_weighted':
+    elif metric == 'HAM_WIND_1_SQRT':
         dist = hamming_windows_distance_matrix_equalized(df_sequence, window_extension=2, batch_size=500, power=0.5)
-    elif metric == 'HAM_WIND_1_0.3_weighted':
+    elif metric == 'HAM_WIND_1_0.3_WEIGHTED':
         dist = hamming_windows_distance_matrix_equalized(df_sequence, window_extension=2, batch_size=500, power=0.3)
-    elif metric == 'HAM_WIND_2':
+    elif metric == 'HAM_WIND_2_COSTS':
         #HAMMING DISTANCE with rolling windows and costs
         dist=hamming_windows_distance_matrix_with_costs(df_sequence,costs, window_extension=2, batch_size=500)
-    elif metric == 'HAM_WIND_3':
+    elif metric == 'HAM_WIND_2_COSTS_ONEMATCHED':
         #HAMMING DISTANCE with rolling windows and costs and one match only 
         dist=hamming_windows_distance_matrix_with_costs_matched(df_sequence,costs, window_extension=2)
     elif metric == 'DHAM':

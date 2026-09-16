@@ -71,7 +71,7 @@ def main():
         print(">>> [Step 2/3] Clustering and sequence profiling completed.\n")
 
     # STEP 3: Survival modeling (Cox) and risk factor evaluation
-    if args.step in ["all", "predict"]:
+    if args.step in ["predict"]:
         print(f">>> [Step 3/3] Training and evaluating predictive model...")
         run_prediction()
         print(">>> [Step 3/3] Predictive modeling pipeline completed.\n")
