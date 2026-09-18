@@ -16,11 +16,11 @@ def run_prediction():
     """
 
     ########### SET UP ###########
-    PRED_NAME='target_obs_drugs' #name of the prediction task: 'target_lrti' or 'target_obs_drugs'
+    PRED_NAME='target_lrti' #name of the prediction task: 'target_lrti' or 'target_obs_drugs'
     #possible features are: 'sex','age','cluster','entropy','turbulence','num_transitions','adi','num_subsequences','complexity','variance_of_spell','count', 'months_last_event','last_year_events'
-    FEATURES=['sex','age','cluster','entropy','num_transitions','complexity','turbulence','num_subsequences','variance_of_spell','count', 'months_last_event','last_year_events'] #features to use for prediction
+    FEATURES=['sex','age','cluster','entropy','num_transitions','complexity','turbulence','num_subsequences','count', 'variance_of_spell', 'months_last_event','last_year_events'] #features to use for prediction
     CAT_FEATURES=['sex','cluster'] #categorical features to use for prediction
-    MODEL='cox_strata_cluster' #model to use for prediction: 'logistic_regression' or 'cox_regression' or 'lasso_regression' or 'cox_time_varying' or cox_strata_entropy' or 'cox_time_varying_strata' or 'cox_strata_cluster'
+    MODEL='cox_regression' #model to use for prediction: 'logistic_regression' or 'cox_regression' or 'lasso_regression' or 'cox_time_varying' or cox_strata_entropy' or 'cox_time_varying_strata' or 'cox_strata_cluster'
 
     (PRED_FOLDER/PRED_NAME).mkdir(parents=True, exist_ok=True)
 
@@ -38,15 +38,15 @@ def run_prediction():
         patients_pred=patients_sequences[(pd.to_datetime(patients_sequences['EF'])-pd.to_datetime(patients_sequences['end_date'])).dt.days>365]
         #load datasets useful to set up the prediction target: patients with the event and time to event
         macrodiag_breath=pd.read_csv(ROOT/'SSA'/'datasets'/'macrodiagnoses_breath.csv')
-        drugs_breath=pd.read_csv(ROOT/'SSA'/'datasets'/'drugs_breath.csv')
+        #drugs_breath=pd.read_csv(ROOT/'SSA'/'datasets'/'drugs_breath.csv')
     
     print(f'The number of patients included in the prediction dataset is: {len(patients_pred)}/{len(patients_sequences)}')
 
 
 
     if PRED_NAME=='target_lrti':
-        #target: patients that have at least 1 INF_INF macrodiagnoses in the follow up period of 1 year after the end of the sequence
-        macro=['INF_INF']
+        #target: patients that have at least 1 LRT macrodiagnoses in the follow up period of 1 year after the end of the sequence
+        macro=['LRT']
         target_patients = pd.DataFrame(
             {'target': 0, 'months': 12.0}, 
             index=patients_pred['pedianet_id']
