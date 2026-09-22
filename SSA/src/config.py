@@ -106,6 +106,16 @@ channels={
         'OBS':6,
         'VIR':7
     },
+    'colors': {
+            'URT':  "#540D12",  # Cerulean blue
+            'AURI': "#DF1818",  # Amber / Orange
+            'LRT':  "#E2752C",  # Carmine red
+            'OBS':  "#B68059",  # Amethyst purple
+            'VIR':  "#3E2C2B",  # Deep crimson
+            'SYM':  "#D3B90F",  # Ochre yellow
+            'OTH':  "#F0E880",  # Dark teal
+            'NO':   '#CCCCCC',  # Light neutral gray
+        },
      'costs' : {
         'URT': {'URT': 0.00, 'AURI': 0.08, 'LRT': 0.12, 'OBS': 0.15, 'VIR': 0.14, 'SYM': 0.17, 'OTH': 0.21, 'NO': 0.27},
         'AURI': {'URT': 0.08, 'AURI': 0.00, 'LRT': 0.13, 'OBS': 0.17, 'VIR': 0.15, 'SYM': 0.18, 'OTH': 0.21, 'NO': 0.28},
@@ -158,7 +168,7 @@ channels={
                 'ANH': 'Antihistamines',            # R06
                 'NO':  'No prescription',
             },
-        'stete_priority':
+        'state_priority':
         {   'NO':0,
             'THR':1,
             'NAS':2,
@@ -167,27 +177,47 @@ channels={
             'OAD':5,
             'ANT':6
         },
+        'colors': {
+            'ANT': "#235B8F",  
+            'OAD': '#2E86C1',  
+            'COC': "#3EAEBA",  
+            'ANH': "#510F57",  
+            'NAS': "#8E2BC0",  
+            'THR': "#CE46A1", 
+            'NO':  '#CCCCCC',  
+        },
         'costs': None
 
     },
     
-    #CARE SETTING SEEQUENCES specific parameters
-    'care_setting': {
+    #SECONDARY CARE SEQUENCES specific parameters
+    'secondary_care': {
         'dataset_path': 'care_setting.csv',
         'col_state': 'care_setting',    
         'col_date': 'date',
         'covariates': ['datan','sesso','idmedico','EF','adi'],
         'states_labels': {
-                'RIC': 'Ricovero',
-                'PS': 'Pronto Soccorso',
-                'VS': 'Visita Specialistica',
-                'NO':  'Nessuno',
-            },  
+
+            'HOS': 'Hospitalization',
+
+            'ER': 'Emergency room access',
+
+            'SV': 'Specialist outpatient visit',
+
+            'NO': 'No event',
+
+        },  
         'state_priority':
         {   'NO':0,
-            'VS':1,
-            'PS':2,
-            'RIC':3
+            'SV':1,
+            'ER':2,
+            'HOS':3
+        },
+        'colors': {
+            'HOS': "#134A24",  # Dark red / Amaranth (Inpatient admission)
+            'ER':  "#14E34B",  # Bright red (Emergency room visit)
+            'SV':  "#8DFA99",  # Orange / Ochre (Specialist outpatient visit)
+            'NO':  '#D3D3D3',  # Neutral gray
         },
         'costs': None
     },
@@ -216,12 +246,12 @@ SEASON=False
 
 
 # ---- Sequence channel to analyze ----
-#options: 'diagnoses','macrodiagnoses', 'supermacrodiagnoses','drugs','care_setting','health'
+#options: 'diagnoses','macrodiagnoses', 'supermacrodiagnoses','drugs','secondary_care','health'
 CHANNEL='macrodiagnoses'
-CHANNEL_1='health' 
-CHANNEL_2='care_setting' 
+CHANNEL_1='drugs' 
+CHANNEL_2='secondary_care' 
 CHANNEL_3='health'
-    
+   
 
 #---- Flag for multichannel ----
 MULTICHANNEL=False
@@ -231,7 +261,7 @@ W_2=1.0  #weight for channel 2
 W_3=1.0  #weight for channel 3
 
 #---- Number of channels ----
-NUM_CHANNELS=1  #to consider all the channels, NUM_CHANNELS=4
+NUM_CHANNELS=3  #to consider all the channels, NUM_CHANNELS=4
 
 # ---- Sequence parameters ----
 ###time unit in days
@@ -249,8 +279,8 @@ SEQ_LENGTH = 36
 
 #define sequence length for the other channels
 SEQ_LENGTH_1 = 36
-SEQ_LENGTH_2 = 48
-SEQ_LENGTH_3 = 48
+SEQ_LENGTH_2 = 36
+SEQ_LENGTH_3 = 36
 #if season is true, specify number of years  for sequence length
 YEARS=3
 
@@ -315,12 +345,23 @@ def make_custom_colors(states_labels: dict) -> list:
             color_idx += 1
             
     return colors
+#if colors are defined in the channels dictiornary
+def get_channel_colors(channel_name: str) -> list:
+    cfg = channels[channel_name]
+    labels = cfg['states_labels']
+    
+
+    if 'colors' in cfg and cfg['colors']:
+        return [cfg['colors'][state] for state in labels.keys()]
+    
+    # Fallback on make_custom_colors if colors are not yet defined
+    return make_custom_colors(labels)
 
 # Generate colors for each channel
-CUSTOM_COLORS   = make_custom_colors(STATES_LABELS)
-CUSTOM_COLORS_1 = make_custom_colors(STATES_LABELS_1)
-CUSTOM_COLORS_2 = make_custom_colors(STATES_LABELS_2)
-CUSTOM_COLORS_3 = make_custom_colors(STATES_LABELS_3)
+CUSTOM_COLORS   = get_channel_colors(CHANNEL)
+CUSTOM_COLORS_1 = get_channel_colors(CHANNEL_1)
+CUSTOM_COLORS_2 = get_channel_colors(CHANNEL_2)
+CUSTOM_COLORS_3 = get_channel_colors(CHANNEL_3)
 
 #----- Cost between states ----
 COSTS= channels[CHANNEL]['costs']
@@ -351,7 +392,7 @@ SEQUENCE_NAME_3 = f'seq_{CHANNEL_3}_{TIME_UNIT_3}_{SEQ_LENGTH_3}'
 #'OM' = Optimal Matching, OM_CONSTANT = Optimal Matching with constant substitution costs, 'OM_DIAG' = Optimal Matching with diagonal substitution costs, 
 #'HAM' = Hamming distance, 'HAM_CONSTANT' = Hamming distance with constant substitution costs, 
 #'DHAM' = Dynamic Hamming distance, 'LCS' = Longest Common Subsequence
-DISTANCE_METRIC = 'HAM_WIND_2_LOG' 
+DISTANCE_METRIC = 'LCS_NO' 
 DISTANCE_METRIC_1= 'LCS'
 DISTANCE_METRIC_2= 'LCS'
 DISTANCE_METRIC_3= 'LCS'
@@ -368,5 +409,5 @@ LINKAGE='ward' #options: 'ward', 'complete', 'average', 'single','centroid','med
 
 #---- Clustering parameters ----
 MAX_CLUSTERS = 10 #maximum number of clusters to consider when evaluating cluster quality indicators
-NUM_CLUSTERS =9 #number of clusters to use for the final clustering solution (can be chosen based on the evaluation of cluster quality indicators)
+NUM_CLUSTERS =7 #number of clusters to use for the final clustering solution (can be chosen based on the evaluation of cluster quality indicators)
 

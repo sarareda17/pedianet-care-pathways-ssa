@@ -176,11 +176,11 @@ def build_dataset():
                 'ANH': {'label': 'Antihistamines',            'codes': get_atc('R06', dataset)},  # R06
                 'NO':  {'label': 'No prescription',      'codes': []}
         }
-    elif CHANNEL=='care_setting' or CHANNEL=='care_setting_season':
+    elif CHANNEL=='secondary_care' or CHANNEL=='secondary_care_season':
         STATES={
-                'RIC': {'label': 'Ricovero', 'codes': ['RIC']},
-                'PS':  {'label': 'Pronto Soccorso', 'codes': ['PS']},
-                'VS':  {'label': 'Visita Specialistica', 'codes': [
+                'HOS': {'label': 'Hospitalization', 'codes': ['RIC']},
+                'ER':  {'label': 'Emergency room access', 'codes': ['PS']},
+                'SV':  {'label': 'Specialist outpatient visit', 'codes': [
                     # ALLERGOLOGIA (branca 6)
                     '89.7A.7_6', '89.7A.7_2',   # Prima visita allergologica pediatrica
                     '91.90.4_2', '91.90.4_3',   # Screening allergologico prick test

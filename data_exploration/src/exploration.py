@@ -85,6 +85,56 @@ def patients_exploration(data):
 
     plt.savefig(ROOT_RESULTS/'figures'/'patients'/'observation_time_cumulative_reverse.png',
             dpi=300, bbox_inches="tight")
+
+    #cumulative distribution of observation time (reverse) in months from birth (SF is birth)
+    plt.figure(figsize=(8, 5))
+
+    # Follow-up in months from birth (SF is birth)
+    obs_time_month = (data['EF'] - data['SF']).dt.days / 30.4375
+
+    # Integer bins for each individual month up to the maximum observed
+    max_months = int(np.ceil(obs_time_month.max()))
+    bins = np.arange(0, max_months + 1, 1)
+
+    # Reverse cumulative histogram (patients with follow-up >= t)
+    plt.hist(obs_time_month, bins=bins, cumulative=-1, 
+            color="#5FA4BB", edgecolor="#4C8193", alpha=0.85)
+
+    plt.title(r"Patients with Follow-up $\geq$ t$ Months from Birth", fontsize=12, fontweight='bold')
+    plt.xlabel("Age from Birth (Months)", fontsize=11)
+    plt.ylabel("Number of Patients", fontsize=11)
+    plt.xlim(0, max_months)
+    plt.grid(True, linestyle='--', alpha=0.5)
+
+    plt.tight_layout()
+    plt.savefig(ROOT_RESULTS / 'figures' / 'patients' / 'observation_time_cumulative_reverse_month.png',
+                dpi=300, bbox_inches="tight")
+
+    #milestone plot 
+     # Follow-up in months from birth
+    obs_months = (data['EF'] - data['datan']).dt.days / 30.4375
+
+    milestones = [6, 12, 24, 36, 48, 60, 72, 84]
+    labels = [f'{m}m\n({m/12}y)' if m >= 12 else f'{m}m' for m in milestones]
+    counts = [(obs_months >= m).sum() for m in milestones]
+    percentages = [(c / len(data)) * 100 for c in counts]
+
+    plt.figure(figsize=(8, 4.5))
+    bars = plt.bar(labels, counts, color="#80B1D3", edgecolor='#9EB7C2', width=0.55)
+
+    # Add exact count and percentage above each bar
+    for bar, pct, n in zip(bars, percentages, counts):
+        y = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width() / 2, y + len(data) * 0.015,
+                f'{pct:.1f}%\n({n:,})', ha='center', va='bottom', fontsize=9)
+
+    plt.ylim(0, len(data) * 1.18)
+    plt.title("Cohort Retention across observation windows", fontsize=12)
+    plt.xlabel("Minimum Follow-up from Birth", fontsize=11)
+    plt.ylabel("Number of Active Patients", fontsize=11)
+    plt.grid(axis='y', linestyle='--', alpha=0.5)
+    plt.tight_layout()
+    plt.savefig(ROOT_RESULTS / 'figures' / 'patients' / 'milestone_plot.png', dpi=300, bbox_inches="tight")
     
     #tables that for each year of age say how many patients are in pedianet using cumulative observation time
     age_years = []
@@ -149,6 +199,15 @@ def patients_exploration(data):
     plt.xlabel("Age (years)")
     plt.ylabel("Frequency")
     plt.savefig(ROOT_RESULTS/'figures'/'patients'/'patient_age_SF.png', dpi=300, bbox_inches="tight")
+
+    #Distribution of age in months at first follow-up
+    age_SF_months = (data['SF'] - data['datan']).dt.days//30
+    plt.figure(figsize=(8,6))
+    plt.hist(age_SF_months, bins=20)
+    plt.title("Age at First Follow-up (Months)")
+    plt.xlabel("Age (months)")
+    plt.ylabel("Frequency")
+    plt.savefig(ROOT_RESULTS/'figures'/'patients'/'patient_age_SF_months.png', dpi=300, bbox_inches="tight")
 
     #Distribution of age at end of follow-up
     age_EF = (data['EF'] - data['datan']).dt.days/365.25

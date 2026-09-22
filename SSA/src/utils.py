@@ -62,8 +62,10 @@ def dataset_preprocessing(patients,dataset,col_date,col_state, states, time_unit
     dataset=select_events(dataset, states, col_state)
 
     #select patients with at least one event in the dataset
+    print(f"Number of patients before selecting those with at least one event: {len(patients_sequences)}")
     patients_sequences=patients_sequences[patients_sequences['pedianet_id'].isin(dataset['pedianet_id'])]
-
+    print(f"Number of patients after selecting those with at least one event: {len(patients_sequences)}")
+    
     #save selected patients
     patients_sequences.to_csv(ROOT/'SSA'/'datasets'/f'selected_patients_diagnoses.csv', index=False)
 
@@ -133,7 +135,9 @@ def dataset_preprocessing_season(patients,dataset,col_date,col_state, states, ti
     dataset=select_events(dataset, states, col_state)
 
     #select patients with at least one event in the dataset
+    print(f"Number of patients before selecting those with at least one event: {len(patients_sequences)}")
     patients_sequences=patients_sequences[patients_sequences['pedianet_id'].isin(dataset['pedianet_id'])]
+    print(f"Number of patients after selecting those with at least one event: {len(patients_sequences)}")
 
     #save selected patients
     patients_sequences.to_csv(ROOT/'SSA'/'datasets'/f'selected_patients_diagnoses_season_{YEARS}.csv', index=False)
@@ -348,27 +352,60 @@ def explore_dataset_preprocessed(patients,patients_sequences, dataset, dataset_p
 
     #plot number of patients with at least one event per time-unit
     plt.figure(figsize=(10,6))
-    ax = dataset_preprocessed.groupby(['time_unit'])['pedianet_id'].nunique().plot(kind='bar')
+    ax = dataset_preprocessed.groupby(['time_unit'])['pedianet_id'].nunique().plot(kind='bar', color='#9EB7C2', linewidth=2)
     ax.bar_label(ax.containers[0])
     plt.xlabel('Time Unit')
     plt.ylabel('Number of Patients')
-    plt.title('Number of Patients with at least one Event per Time Unit')
+    plt.title('Number of Patients with at least one diagnosis for each time unit')
     plt.savefig(ROOT_FOLDER_EXPLORATION / SEQUENCE_NAME / 'patients_per_time_unit.png')
+
+
 
     #plot number of patients with more than one event for each time unit in the preprocessed dataset
     plt.figure(figsize=(10,6))
     dataset_preprocessed.groupby(['pedianet_id', 'time_unit']).size().groupby(['time_unit']).apply(lambda x: (x > 1).sum()).plot()
     plt.xlabel('Time Unit')
     plt.ylabel('Number of Patients with More than One Event')
-    plt.title('Number of Patients with More than One Event for Each Time Unit')
+    plt.title('Number of Patients with two or more Events for Each Time Unit')
     plt.savefig(ROOT_FOLDER_EXPLORATION / SEQUENCE_NAME / 'patients_with_more_than_one_event_per_time_unit.png')
+    
+    
 
+    # Plot the percentage of patients with two or more different events per time unit
+    total_patients = dataset_preprocessed['pedianet_id'].nunique()
+    plt.figure(figsize=(10, 6))
+    (
+        dataset_preprocessed.groupby(['pedianet_id', 'time_unit'])['state']
+        .nunique()
+        .groupby('time_unit')
+        .apply(lambda x: (x > 1).sum() / total_patients * 100)
+        .plot(color='#9EB7C2', linewidth=2)
+    )
+    plt.xlabel('Time Unit')
+    plt.ylabel('Percentage of Patients (%)')
+    plt.title('Percentage of Patients with two or more different events for each time units')
+    plt.savefig(ROOT_FOLDER_EXPLORATION / SEQUENCE_NAME / 'percentage_patients_with_more_than_one_different_event_per_time_unit.png',bbox_inches='tight')
+
+    # Plot the percentage of multi-event patients among active patients (with >= 1 event) per time unit
+    plt.figure(figsize=(10, 6))
+    (
+        dataset_preprocessed.groupby(['pedianet_id', 'time_unit'])['state']
+        .nunique()
+        .groupby('time_unit')
+        .apply(lambda x: (x > 1).sum() / (x >= 1).sum() * 100)
+        .plot(color='#9EB7C2', linewidth=2)
+    )
+    plt.xlabel('Time Unit')
+    plt.ylabel('Percentage of Active Patients (%)')
+    plt.title('Percentage of Patients with two or more different events among active patients for each time unit')
+    plt.savefig(ROOT_FOLDER_EXPLORATION / SEQUENCE_NAME / 'percentage_active_patients_with_more_than_one_different_event_per_time_unit.png',bbox_inches='tight')
+    
     #plot number of patients with two or more different events for each time unit in the preprocessed dataset
     plt.figure(figsize=(10,6))
-    dataset_preprocessed.groupby(['pedianet_id', 'time_unit'])['state'].nunique().groupby(['time_unit']).apply(lambda x: (x > 1).sum()).plot()
+    dataset_preprocessed.groupby(['pedianet_id', 'time_unit'])['state'].nunique().groupby(['time_unit']).apply(lambda x: (x > 1).sum()).plot(color='#9EB7C2', linewidth=2)
     plt.xlabel('Time Unit')
-    plt.ylabel('Number of Patients with More than One Different Event')
-    plt.title('Number of Patients with More than One Different Event for Each Time Unit')
+    plt.ylabel('Number of Patients')
+    plt.title('Number of Patients with two or more different events for each time unit')
     plt.savefig(ROOT_FOLDER_EXPLORATION / SEQUENCE_NAME / 'patients_with_more_than_one_different_event_per_time_unit.png')
 
     #plot number of patients with more than two events for each time unit in the preprocessed dataset

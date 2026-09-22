@@ -96,13 +96,13 @@ def compute_sequence_characteristics(sequence, SEQUENCE_NAME, STATES_LABELS,cust
 
 
     #example: plot state 'Nessuna diagnosi' counts distribution for all sequences
-    plt.figure(figsize=(10,6))
-    state_freq_per_sequence_df['No Diagnosis'].value_counts().sort_index().plot(kind='bar')
-    plt.title(f'State NO Frequency per Sequence: {SEQUENCE_NAME}')
-    plt.xlabel('Number of times state NO appears in sequence')
-    plt.ylabel('Frequency')
-    plt.tight_layout()
-    plt.savefig(ROOT_FOLDER_CHAR / SEQUENCE_NAME / 'state_NO_freq_per_sequence.png')
+    #plt.figure(figsize=(10,6))
+    #state_freq_per_sequence_df['No Diagnosis'].value_counts().sort_index().plot(kind='bar')
+    #plt.title(f'State NO Frequency per Sequence: {SEQUENCE_NAME}')
+    #plt.xlabel('Number of times state NO appears in sequence')
+    #plt.ylabel('Frequency')
+    #plt.tight_layout()
+    #plt.savefig(ROOT_FOLDER_CHAR / SEQUENCE_NAME / 'state_NO_freq_per_sequence.png')
 
     ######################### WITHIN SEQUENCE ENTROPY ######################## 
     #measures how diverse the states are within each sequence
@@ -317,11 +317,14 @@ def sequence_visualization_tools(sequence, SEQUENCE_NAME, STATES_LABELS,custom_c
     #The diagonal cells are stay-in-the-same-state probabilities.
     #Under the hood, the transition matrix is row-normalized, so each row sums to 1.0 (i.e., probabilities).
     from sequenzo import plot_transition_matrix
+
     
     plot_transition_matrix(
         sequence,
         save_as=str(ROOT_FOLDER_VISUAL / SEQUENCE_NAME / 'transition_matrix.png'),
     )
+
+
 
     ################## RELATIVE FREQUENCY PLOT ##############
     #draws a two-panel figure to summarize sequence “typicality” by frequency groups:

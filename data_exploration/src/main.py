@@ -44,7 +44,7 @@ def main():
     path12=ROOT/'data'/'comorbidities_exemptions.csv'
     #comorbidities_exemptions = pd.read_csv(path12)
     path13=ROOT/'data'/'vaccination_counts.xlsx'
-    vaccination_counts = pd.read_excel(path13)
+    #vaccination_counts = pd.read_excel(path13)
 
     # Perform general exploration
     #general_exploration(patients)
@@ -55,9 +55,9 @@ def main():
     #general_exploration(contacts)
     #general_exploration(exemptions)
     #general_exploration(fse)
-    #patients_exploration(patients)
+    patients_exploration(patients)
     #main_diagnoses_exploration(diagnoses,patients)
-    vaccines_exploration(vaccines,patients,vaccination_counts)
+    #vaccines_exploration(vaccines,patients,vaccination_counts)
     #drugs_exploration(drugs,patients)
     #outpatients_exploration(outpatients_with_descriptions,branche,patients)
     #contacts_exploration(contacts,patients)
