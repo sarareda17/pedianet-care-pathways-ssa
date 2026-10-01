@@ -107,14 +107,14 @@ channels={
         'VIR':7
     },
     'colors': {
-            'URT':  "#540D12",  # Cerulean blue
-            'AURI': "#DF1818",  # Amber / Orange
-            'LRT':  "#E2752C",  # Carmine red
-            'OBS':  "#B68059",  # Amethyst purple
-            'VIR':  "#3E2C2B",  # Deep crimson
-            'SYM':  "#D3B90F",  # Ochre yellow
-            'OTH':  "#F0E880",  # Dark teal
-            'NO':   '#CCCCCC',  # Light neutral gray
+            'URT':  "#2EC046",  
+            'AURI': "#DF1818",  
+            'LRT':  "#6839CE",  
+            'OBS':  "#DD7F3B",  
+            'VIR':  "#488DD7",  
+            'SYM':  "#D740BB",  
+            'OTH':  "#DFD625", 
+            'NO':   '#CCCCCC',  
         },
      'costs' : {
         'URT': {'URT': 0.00, 'AURI': 0.08, 'LRT': 0.12, 'OBS': 0.15, 'VIR': 0.14, 'SYM': 0.17, 'OTH': 0.21, 'NO': 0.27},
@@ -178,12 +178,12 @@ channels={
             'ANT':6
         },
         'colors': {
-            'ANT': "#235B8F",  
-            'OAD': '#2E86C1',  
-            'COC': "#3EAEBA",  
-            'ANH': "#510F57",  
-            'NAS': "#8E2BC0",  
-            'THR': "#CE46A1", 
+            'ANT': "#227F71",  
+            'OAD': "#A92CC8",  
+            'COC': "#C4AF26",  
+            'ANH': "#78DF9E",  
+            'NAS': "#E7445A",  
+            'THR': "#E991CB", 
             'NO':  '#CCCCCC',  
         },
         'costs': None
@@ -214,10 +214,10 @@ channels={
             'HOS':3
         },
         'colors': {
-            'HOS': "#134A24",  # Dark red / Amaranth (Inpatient admission)
-            'ER':  "#14E34B",  # Bright red (Emergency room visit)
-            'SV':  "#8DFA99",  # Orange / Ochre (Specialist outpatient visit)
-            'NO':  '#D3D3D3',  # Neutral gray
+            'HOS': "#DFEE0B",  
+            'ER':  "#17138C",  
+            'SV':  "#24CCE2",  
+            'NO':  '#CCCCCC', 
         },
         'costs': None
     },
@@ -392,7 +392,7 @@ SEQUENCE_NAME_3 = f'seq_{CHANNEL_3}_{TIME_UNIT_3}_{SEQ_LENGTH_3}'
 #'OM' = Optimal Matching, OM_CONSTANT = Optimal Matching with constant substitution costs, 'OM_DIAG' = Optimal Matching with diagonal substitution costs, 
 #'HAM' = Hamming distance, 'HAM_CONSTANT' = Hamming distance with constant substitution costs, 
 #'DHAM' = Dynamic Hamming distance, 'LCS' = Longest Common Subsequence
-DISTANCE_METRIC = 'LCS_NO' 
+DISTANCE_METRIC = 'LCS' 
 DISTANCE_METRIC_1= 'LCS'
 DISTANCE_METRIC_2= 'LCS'
 DISTANCE_METRIC_3= 'LCS'
@@ -409,5 +409,5 @@ LINKAGE='ward' #options: 'ward', 'complete', 'average', 'single','centroid','med
 
 #---- Clustering parameters ----
 MAX_CLUSTERS = 10 #maximum number of clusters to consider when evaluating cluster quality indicators
-NUM_CLUSTERS =7 #number of clusters to use for the final clustering solution (can be chosen based on the evaluation of cluster quality indicators)
+NUM_CLUSTERS =4 #number of clusters to use for the final clustering solution (can be chosen based on the evaluation of cluster quality indicators)
 

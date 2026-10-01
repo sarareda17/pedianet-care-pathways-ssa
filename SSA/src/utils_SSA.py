@@ -115,8 +115,7 @@ def compute_sequence_characteristics(sequence, SEQUENCE_NAME, STATES_LABELS,cust
 
     #save distribution plot of entropy per sequence
     plt.figure(figsize=(10,6))
-    norm_entropy_per_sequence_df['Entropy'].plot(kind='hist', bins=100)
-    plt.title(f'Within Sequence Entropy Distribution: {SEQUENCE_NAME}')
+    norm_entropy_per_sequence_df['Entropy'].plot(kind='hist', bins=100, color="#80B1D3")
     plt.xlabel('Entropy')
     plt.ylabel('Frequency')
     plt.tight_layout()
@@ -204,6 +203,14 @@ def compute_sequence_characteristics(sequence, SEQUENCE_NAME, STATES_LABELS,cust
     plt.tight_layout()
     plt.savefig(ROOT_FOLDER_CHAR / SEQUENCE_NAME / 'turbulence_per_sequence.png')
 
+    #save distribution plot of normalized turbulence per sequence
+    plt.figure(figsize=(10,6))
+    norm_turbolence_per_sequence_df['Turbulence'].plot(kind='hist', bins=100, color="#80B1D3")   
+    plt.xlabel('Normalized Turbulence')
+    plt.ylabel('Frequency')
+    plt.tight_layout()
+    plt.savefig(ROOT_FOLDER_CHAR / SEQUENCE_NAME / 'normalized_turbulence_per_sequence.png')
+
     ####################### LONGITUDINAL CHARACTERISTICS  ########################
     #creates a horizontal bar chart showing four key sequence characteristics for selected sequences:
     #Transitions: how many times sequences change from one state to another
@@ -256,6 +263,68 @@ def compute_sequence_characteristics(sequence, SEQUENCE_NAME, STATES_LABELS,cust
     axis=1
     )
     characteristics_by_time_df.to_csv(ROOT_FOLDER_CHAR / SEQUENCE_NAME / 'characteristics_by_time.csv', index=False)
+
+    ######## SUMMARY TABLE OF CHARACTERISTICS ########
+    summary_table = pd.DataFrame(
+        {
+            "Metric": [
+                "Number of Subsequences",
+                "Number of Transitions",
+                "Normalized Transitions",
+                "Mean Duration of Spells",
+                "Variance of Spell Durations",
+                "Entropy",
+                "Normalized Entropy",
+                "Complexity Index",
+                "Turbulence",
+                "Normalized Turbulence",
+            ],
+            "Mean": [
+                characteristics_by_sequence_df[
+                    "number of subsequences"
+                ].mean(),
+                characteristics_by_sequence_df["number of transitions"].mean(),
+                characteristics_by_sequence_df[
+                    "normalized number of transitions"
+                ].mean(),
+                characteristics_by_sequence_df[
+                    "mean duration of spells"
+                ].mean(),
+                characteristics_by_sequence_df[
+                    "variance of spell durations"
+                ].mean(),
+                characteristics_by_sequence_df["entropy"].mean(),
+                characteristics_by_sequence_df["normalized entropy"].mean(),
+                characteristics_by_sequence_df["complexity index"].mean(),
+                characteristics_by_sequence_df["turbulence"].mean(),
+                characteristics_by_sequence_df[
+                    "normalized turbulence"
+                ].mean(),
+            ],
+            "Std": [
+                characteristics_by_sequence_df["number of subsequences"].std(),
+                characteristics_by_sequence_df["number of transitions"].std(),
+                characteristics_by_sequence_df[
+                    "normalized number of transitions"
+                ].std(),
+                characteristics_by_sequence_df["mean duration of spells"].std(),
+                characteristics_by_sequence_df[
+                    "variance of spell durations"
+                ].std(),
+                characteristics_by_sequence_df["entropy"].std(),
+                characteristics_by_sequence_df["normalized entropy"].std(),
+                characteristics_by_sequence_df["complexity index"].std(),
+                characteristics_by_sequence_df["turbulence"].std(),
+                characteristics_by_sequence_df["normalized turbulence"].std(),
+            ],
+        }
+    )
+
+    summary_table.to_latex(
+        ROOT_FOLDER_CHAR / SEQUENCE_NAME / "summary_table_characteristics.tex",
+        index=False,
+        float_format="%.2f",
+    )
 
     return
 
@@ -359,6 +428,192 @@ def custom_visualization_tools(df, time_cols, SEQUENCE_NAME, STATES_LABELS,custo
     #create a folder in ROOT_FOLDER_VISUAL for the custom visualizations if it doesn't exist
     (ROOT_FOLDER_VISUAL / SEQUENCE_NAME).mkdir(parents=True, exist_ok=True)
 
+    ############ TRANSITION RATES MATRIX HEATMAP ############
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import LinearSegmentedColormap
+    
+    # 1. Define target color and create the custom gradient colormap (white -> target color)
+    TARGET_COLOR = "#1f77b4"  # Replace with any HEX or RGB color you prefer
+    custom_cmap = LinearSegmentedColormap.from_list(
+        "white_to_target", ["#ffffff", TARGET_COLOR]
+    )
+
+    # 2. Ordered alphabet list and display labels
+    all_alphabet_states = list(STATES_LABELS.keys())
+    state_display_labels = [STATES_LABELS[s] for s in all_alphabet_states]
+
+    # 3. Extract consecutive time-step pairs (t -> t+1) across all sequences
+    #    arr[:, :-1] contains states at position t
+    #    arr[:, 1:]  contains states at position t+1
+    seq_df=df[time_cols]
+    seq_arr = seq_df.to_numpy()
+    source_states = seq_arr[:, :-1].flatten()
+    dest_states = seq_arr[:, 1:].flatten()
+
+    # Filter out potential missing/NaN values if present
+    valid_mask = pd.notna(source_states) & pd.notna(dest_states)
+    source_states = source_states[valid_mask]
+    dest_states = dest_states[valid_mask]
+
+    # 4. Count n_{t, t+1}(s_i, s_j) via crosstab
+    transitions_counts = pd.crosstab(
+        pd.Series(source_states, name="From"),
+        pd.Series(dest_states, name="To"),
+    ).reindex(index=all_alphabet_states, columns=all_alphabet_states, fill_value=0)
+
+    # 5. Compute p(s_j | s_i): divide by row sums (total visits to s_i between t=1 and L-1)
+    row_denominators = transitions_counts.sum(axis=1)
+    trans_rates = transitions_counts.div(row_denominators, axis=0).fillna(0.0)
+
+    # 6. Render heatmap
+    fig_size = max(8, len(all_alphabet_states) * 0.9)
+    fig, ax = plt.subplots(figsize=(fig_size + 2, fig_size))
+
+    sns.heatmap(
+        trans_rates,
+        annot=True,
+        fmt=".2f",                     # 3 decimal places for probabilities
+        cmap=custom_cmap,
+        vmin=0.0,
+        vmax=1.0,                      # Fixed scale covering full probability range [0, 1]
+        cbar_kws={"label": "Transition Probability p(sj | si)"},
+        xticklabels=state_display_labels,
+        yticklabels=state_display_labels,
+        linewidths=0.5,
+        linecolor="#e0e0e0",
+        ax=ax,
+    )
+
+    ax.set_title("State Transition Rates Matrix", fontsize=15, pad=15)
+    ax.set_xlabel("Destination State (sj at t+1)", fontsize=12, labelpad=10)
+    ax.set_ylabel("Source State (si at t)", fontsize=12, labelpad=10)
+    plt.xticks(rotation=45, ha="right")
+    plt.yticks(rotation=0)
+
+    plt.tight_layout()
+    plt.savefig(
+        ROOT_FOLDER_VISUAL / SEQUENCE_NAME / "state_transition_rates_heatmap.png",
+        dpi=300,
+        bbox_inches="tight",
+    )
+
+    plt.close(fig)
+
+    ############### SEQUENCE INDEX PLOT RANDOM SUBSET 20 SEQUENCES ############
+    import matplotlib.patches as mpatches
+
+    state_to_color = dict(zip(STATES_LABELS.keys(), custom_colors))
+    sampled = (
+        df[time_cols]
+        .sample(20, random_state=42)
+        .reset_index(drop=True)
+    )
+
+    fig, ax = plt.subplots(figsize=(14, 5))
+    for i, (_, row) in enumerate(sampled.iterrows()):
+        for t, state in enumerate(row):
+            ax.barh(
+                i,
+                1,
+                left=t,
+                color=state_to_color.get(state, "grey"),
+                edgecolor="none",
+                height=0.8,
+            )
+
+    ax.set(
+        xlabel="Time",
+        ylabel="Sequences",
+        xlim=(0, len(time_cols)),
+        ylim=(-0.5, len(sampled) - 0.5),
+        yticks=[],
+    )
+    ax.legend(
+        handles=[
+            mpatches.Patch(color=c, label=STATES_LABELS[s])
+            for s, c in state_to_color.items()
+        ],
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.15),
+        ncol=len(state_to_color),  
+        frameon=False,
+    )
+
+    plt.tight_layout()
+    out_dir = ROOT_FOLDER_VISUAL / SEQUENCE_NAME
+    out_dir.mkdir(parents=True, exist_ok=True)
+    plt.savefig(
+        out_dir / f"sequence_index_random_{len(sampled)}.png",
+        dpi=300,
+        bbox_inches="tight",
+    )
+
+    #### SEQUENCE INDEX PLOT ALL SEQUENCES ############
+    import matplotlib.patches as mpatches
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import ListedColormap
+    import numpy as np
+
+    # 1. Map states to numerical indices and create a discrete colormap
+    states = list(STATES_LABELS.keys())
+    state_to_idx = {s: i for i, s in enumerate(states)}
+    cmap = ListedColormap(custom_colors)
+
+    # 2. Convert the entire DataFrame into a numerical NumPy array
+    data_matrix = df[time_cols].replace(state_to_idx).to_numpy()
+
+    # 3. Fast rendering with imshow
+    fig, ax = plt.subplots(figsize=(14, 8))
+
+    im = ax.imshow(
+        data_matrix,
+        aspect="auto",             # Stretches cells to fill the figure without forcing square pixels
+        cmap=cmap,
+        vmin=0,
+        vmax=len(states) - 1,
+        origin="lower",            # Places sequence index 0 at the bottom, matching your previous barh plot
+        interpolation="nearest",
+    )
+
+    # 4. Axis limits and labels
+    ax.set(
+        xlabel="Time",
+        ylabel=f"All Sequences (N={len(df)})",
+        xlim=(-0.5, len(time_cols) - 0.5),
+        ylim=(-0.5, len(df) - 0.5),
+        yticks=[],
+    )
+
+    # Optional: label the X-axis ticks with actual time column names
+    # ax.set_xticks(range(len(time_cols)))
+    # ax.set_xticklabels(time_cols, rotation=45)
+
+    # 5. Legend positioned below the plot
+    ax.legend(
+        handles=[
+            mpatches.Patch(color=custom_colors[i], label=STATES_LABELS[s])
+            for i, s in enumerate(states)
+        ],
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.12),
+        ncol=len(states),
+        frameon=False,
+    )
+
+    plt.tight_layout()
+    out_dir = ROOT_FOLDER_VISUAL / SEQUENCE_NAME
+    out_dir.mkdir(parents=True, exist_ok=True)
+    plt.savefig(
+        out_dir / f"sequence_index_all_{len(df)}.png",
+        dpi=300,
+        bbox_inches="tight",
+    )
+    plt.close(fig)
+
+    
+
+
     ######STATE DISTRIBUTION PLOT without considering NO state######
 
     # Map each state code to its color, then drop 'NO'
@@ -433,6 +688,44 @@ def custom_visualization_tools(df, time_cols, SEQUENCE_NAME, STATES_LABELS,custo
     colors = [state_to_color[s] for s in states_to_plot]
     perc = perc.loc[states_to_plot]
 
+    ####### LINE PLOT COUNTS WITHOUT NO STATE ORDERED BY AVERAGE SIZE #######
+    # 1. Filter out 'NO' state and sort by average count over time
+    states_to_plot = [s for s in STATES_LABELS.keys() if s != 'NO']
+    counts_no_no = counts.loc[states_to_plot]
+
+    # Order states: largest average on top (descending) or bottom (ascending)
+    order = counts_no_no.mean(axis=1).sort_values(ascending=False).index.tolist()
+    colors = [state_to_color[s] for s in order]
+    counts_ordered = counts_no_no.loc[order]
+
+    # 2. Line plot — counts per time unit
+    fig, ax = plt.subplots(figsize=(14, 7))
+    for state, color in zip(order, colors):
+        ax.plot(
+            counts_ordered.columns,
+            counts_ordered.loc[state],
+            label=STATES_LABELS[state],
+            color=color,
+            linewidth=2,
+        )
+
+    ax.set(
+        title='Event Counts per State over Time (excluding "No diagnosis")',
+        xlabel='Time',
+        ylabel='Event Count',
+    )
+    ax.margins(x=0)
+    ax.grid(True, alpha=0.3)
+    ax.legend(loc='center left', bbox_to_anchor=(1.01, 0.5), frameon=False)
+
+    plt.tight_layout()
+    plt.savefig(
+        ROOT_FOLDER_VISUAL / SEQUENCE_NAME / 'state_counts_lines.png',
+        dpi=300,
+        bbox_inches='tight',
+    )
+
+
     ########## ONE PLOT PER EACH STATE (subplots) ##########
     import math
     # For each state: count of patients in that state at each time point
@@ -487,6 +780,55 @@ def custom_visualization_tools(df, time_cols, SEQUENCE_NAME, STATES_LABELS,custo
         count_table = pd.concat([count_table, pd.DataFrame({'State': [STATES_LABELS[state]], 'Total Count': [total_count], 'Percentage': [percentage]})], ignore_index=True)
     count_table.to_latex(ROOT_FOLDER_VISUAL / SEQUENCE_NAME / 'state_total_count_table.tex', index=False, float_format="%.2f")
 
+    ############ SUMMARY TABLE #############
+    # 1. Number of non-'NO' events per patient
+    events_per_patient = (seq_df != "NO").sum(axis=1)
+
+    # 2. Time intervals between consecutive non-'NO' events
+    # Finds column indices of events and computes diffs
+    time_indices = np.arange(len(time_cols))
+
+
+    def compute_patient_intervals(row_bool):
+        idx = time_indices[row_bool]
+        return np.diff(idx).tolist() if len(idx) > 1 else []
+
+
+    intervals_per_patient = [
+        compute_patient_intervals(row) for row in (seq_df != "NO").values
+    ]
+    all_intervals = [gap for gaps in intervals_per_patient for gap in gaps]
+
+    mean_intervals = np.mean(all_intervals) if all_intervals else np.nan
+    std_intervals = np.std(all_intervals, ddof=1) if len(all_intervals) > 1 else np.nan
+
+    # 3. Build summary DataFrame
+    summary_data = [
+        ("Patients with 1 event", (events_per_patient == 1).sum()),
+        ("Patients with 2 events", (events_per_patient == 2).sum()),
+        ("Patients with 3 events", (events_per_patient == 3).sum()),
+        ("Patients with 4 events", (events_per_patient == 4).sum()),
+        ("Patients with 5 events", (events_per_patient == 5).sum()),
+        ("Patients with 6 events", (events_per_patient == 6).sum()),
+        ("Patients with 7 events", (events_per_patient == 7).sum()),
+        ("Patients with 8 events", (events_per_patient == 8).sum()),
+        ("Patients with > 8 events", (events_per_patient > 8).sum()),
+        ("Mean number of events per patient", events_per_patient.mean()),
+        ("SD number of events per patient", events_per_patient.std()),
+        ("Mean number of different states per patient", (seq_df.nunique(axis=1)).mean()),
+        ("SD number of different states per patient", (seq_df.nunique(axis=1)).std()),
+        ("Mean time between events", mean_intervals),
+        ("SD time between events", std_intervals),
+    ]
+
+    summary_table = pd.DataFrame(summary_data, columns=["Metric", "Value"])
+
+    # 4. Export to LaTeX
+    summary_table.to_latex(
+        ROOT_FOLDER_VISUAL / SEQUENCE_NAME / "summary_table_patients.tex",
+        index=False,
+        float_format="%.2f",
+    )
 
 
 ######### CLUSTERING UTILS FUNCTIONS #########
@@ -580,7 +922,7 @@ def hierarchical_clustering(sequence,distance_matrix):
     cluster_quality.plot_cqi_scores(save_as=str(ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f"cqi_scores_{DISTANCE_METRIC}_{LINKAGE}.png"), title="Cluster Quality Indicators")
     #with norm the type of normalization can be specified (default is "zscore")
     #with metrics_list the metrics to plot can be specified (default is all)
-    cluster_quality.plot_cqi_scores(metrics_list=["ASW","CH","PBC"],save_as=str(ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f"cqi_scores_sil_ch_{DISTANCE_METRIC}_{LINKAGE}.png"), title="ASW and CH Cluster Quality Indicators")
+    cluster_quality.plot_cqi_scores(metrics_list=["ASW","CH","PBC"],save_as=str(ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f"indicators_{DISTANCE_METRIC}_{LINKAGE}.png"), title="ASW and CH Cluster Quality Indicators")
 
 
     #export cluster results 
@@ -639,7 +981,107 @@ def hierarchical_clustering(sequence,distance_matrix):
     )
 
     return cluster_labels
+from scipy.spatial.distance import squareform
+from scipy.stats import pearsonr
+from scipy.cluster.hierarchy import fcluster
+from sklearn.metrics import silhouette_score
 
+def evaluate_and_plot_cluster_metrics(Z, condensed_distance, distance_matrix, max_clusters, save_path=None):
+    """
+    Computes and plots Silhouette Score, Calinski-Harabasz (distance-based), 
+    and Point-Biserial Correlation in a fast, vectorized manner for k from 2 to max_clusters.
+    """
+    n_samples = distance_matrix.shape[0]
+    k_range = list(range(2, max_clusters + 1))
+    
+    sil_scores = []
+    ch_scores = []
+    pbc_scores = []
+    
+    # Precompute total sum of squares divided by 2 * N (Total Sum of Squares)
+    # Allows distance-based Calinski-Harabasz calculation in O(1) total dispersion time
+    tot_sq_dist = np.sum(condensed_distance ** 2) / n_samples
+
+    # Upper triangular indices matching the layout of condensed_distance
+    triu_idx = np.triu_indices(n_samples, k=1)
+
+    for k in k_range:
+        labels = fcluster(Z, t=k, criterion='maxclust')
+        
+        # 1. Silhouette Score (fast using precomputed distance matrix)
+        sil = silhouette_score(distance_matrix, labels, metric='precomputed')
+        sil_scores.append(sil)
+        
+        # 2. Point-Biserial Correlation (PBC / partition vs distance correlation)
+        # 0 if elements share the same cluster, 1 if they belong to different clusters
+        cluster_diff = (labels[triu_idx[0]] != labels[triu_idx[1]]).astype(np.float64)
+        if np.std(cluster_diff) > 0:
+            pbc, _ = pearsonr(condensed_distance, cluster_diff)
+        else:
+            pbc = 0.0
+        pbc_scores.append(pbc)
+
+        # 3. Distance-based Calinski-Harabasz Index (Pseudo F-statistic for dissimilarity matrices)
+        # WSS: Within-cluster sum of squared distances divided by 2 * n_k
+        wss = 0.0
+        for c in range(1, k + 1):
+            members = np.where(labels == c)[0]
+            if len(members) > 1:
+                sub_dists = distance_matrix[np.ix_(members, members)]
+                wss += np.sum(sub_dists ** 2) / (2 * len(members))
+        
+        bss = tot_sq_dist - wss
+        if wss > 0 and (n_samples - k) > 0:
+            ch = (bss / (k - 1)) / (wss / (n_samples - k))
+        else:
+            ch = 0.0
+        ch_scores.append(ch)
+
+    # Plotting using 3 distinct y-axes to handle varying scales cleanly
+    fig, ax1 = plt.subplots(figsize=(9, 5))
+
+    # Silhouette curve
+    color_sil = 'tab:blue'
+    ax1.set_xlabel('Number of clusters (k)', fontweight='bold')
+    ax1.set_ylabel('Silhouette Score', color=color_sil, fontweight='bold')
+    line1 = ax1.plot(k_range, sil_scores, marker='o', color=color_sil, label='Silhouette', linewidth=2)
+    ax1.tick_params(axis='y', labelcolor=color_sil)
+    ax1.set_xticks(k_range)
+    ax1.grid(True, linestyle='--', alpha=0.4)
+
+    # Second axis for Point-Biserial Correlation (scale: [-1, 1])
+    ax2 = ax1.twinx()
+    color_pbc = 'tab:green'
+    ax2.set_ylabel('Point-Biserial Correlation', color=color_pbc, fontweight='bold')
+    line2 = ax2.plot(k_range, pbc_scores, marker='s', color=color_pbc, label='Point-Biserial', linewidth=2)
+    ax2.tick_params(axis='y', labelcolor=color_pbc)
+
+    # Third offset axis for Calinski-Harabasz (scale: unbounded positive values)
+    ax3 = ax1.twinx()
+    ax3.spines['right'].set_position(('outward', 60))
+    color_ch = 'tab:red'
+    ax3.set_ylabel('Calinski-Harabasz Index', color=color_ch, fontweight='bold')
+    line3 = ax3.plot(k_range, ch_scores, marker='^', color=color_ch, label='Calinski-Harabasz', linewidth=2)
+    ax3.tick_params(axis='y', labelcolor=color_ch)
+
+    # Combined legend
+    lines = line1 + line2 + line3
+    labels_legend = [l.get_label() for l in lines]
+    ax1.legend(lines, labels_legend, loc='best')
+
+    plt.title('Clustering Validation Indices', pad=15, fontweight='bold')
+    plt.tight_layout()
+
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    plt.close()
+
+    return {
+        'k': k_range,
+        'silhouette': sil_scores,
+        'point_biserial': pbc_scores,
+        'calinski_harabasz': ch_scores
+    }
 
 
 ## 2) Hierarchical clustering with custom implementation using scipy and fastcluster
@@ -649,7 +1091,6 @@ def hierarchical_clustering_custom(sequence,sequence_ids, distance_matrix):
     
     from scipy.cluster.hierarchy import linkage, dendrogram, fcluster
     from scipy.spatial.distance import squareform 
-    from sklearn.metrics import silhouette_score
     import fastcluster
     condensed_distance = squareform(distance_matrix)
     Z = fastcluster.linkage(condensed_distance, method=LINKAGE)
@@ -663,26 +1104,17 @@ def hierarchical_clustering_custom(sequence,sequence_ids, distance_matrix):
     plt.ylabel('Distance')
     plt.savefig(ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME /CLUSTERING/DISTANCE_METRIC/ f"dendrogram_{DISTANCE_METRIC}_{LINKAGE}.png", dpi=300, bbox_inches='tight')
 
-    #silhouette scores
-    # silhouettes = []
-    # print(f"Computing silhouette scores...")
-    # for k in range(2, MAX_CLUSTERS + 1):
-    #     labels = fcluster(Z, t=k, criterion='maxclust')
-        
-    #     # Silhouette
-    #     sil = silhouette_score(distance_matrix, labels)
-    #     silhouettes.append(sil)
+    #Evaluate and plot validation metrics (Silhouette, PBC, Calinski-Harabasz)
+    eval_plot_path = ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME /CLUSTERING/DISTANCE_METRIC/ f"cluster_evaluation_metrics.png"
+    metrics = evaluate_and_plot_cluster_metrics(
+        Z=Z,
+        condensed_distance=condensed_distance,
+        distance_matrix=distance_matrix,
+        max_clusters=MAX_CLUSTERS,
+        save_path=eval_plot_path
+    )
 
-    # #Plot silhouette scores
-    # plt.figure(figsize=(8, 5))
-    # plt.plot(range(2, MAX_CLUSTERS + 1), silhouettes, marker='o', linewidth=2)
-    # plt.xlabel('Number of clusters')
-    # plt.ylabel('Silhouette Score')
-    # plt.title('Silhouette Scores for Hierarchical Clustering')
-    # plt.xticks(range(2, MAX_CLUSTERS + 1))
-    # plt.tight_layout()
-    # plt.savefig(ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME /CLUSTERING /LINKAGE /DISTANCE_METRIC/ f"elbow_silhouette_{DISTANCE_METRIC}.png", dpi=300, bbox_inches='tight')
-        
+    #final cluster labels for the specified number of clusters
     cluster_labels = fcluster(Z, t=NUM_CLUSTERS, criterion='maxclust')
     cluster_labels_df = pd.DataFrame({'Entity ID': sequence_ids, 'Cluster': cluster_labels})
     cluster_labels_df.to_csv(ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f"cluster_labels_{DISTANCE_METRIC}.csv", index=False)

@@ -25,12 +25,12 @@ def get_dissimilarity_matrix(metric,sequence, df_sequence,SEQUENCE_NAME,costs):
 
 #function to apply the chosen dissimilarity measure 
 def compute_dissimilarity_matrix(metric,sequence, df_sequence,SEQUENCE_NAME,costs):
-    if metric == 'OM':
+    if metric == 'OM_TRATE':
         #OPTIMAL MATCHING with transistion rate substitution costs and indel costs=1
         dist=get_distance_matrix(seqdata=sequence, method='OM',sm="TRATE",indel=1,norm="auto",full_matrix=True)
-    elif metric == 'OM_CONSTANT':
+    elif metric == 'OM_CONST':
         #OPTIMAL MATCHING with constant substitution costs and constant indel costs
-        dist=get_distance_matrix(seqdata=sequence, method='OM',sm="CONSTANT",indel=1,norm="auto",full_matrix=True)
+        dist=get_distance_matrix(seqdata=sequence, method='OM',sm="CONSTANT",indel=1.5,norm="auto",full_matrix=True)
     elif metric == 'OM_DIAG':
         #OPTIMAL MATCHING with custom substitution cost matrix and indel costs 
         sm_diag = build_om_diag_sm(STATES_LABELS, cost_between=2.0, cost_no=0.5)
@@ -54,7 +54,7 @@ def compute_dissimilarity_matrix(metric,sequence, df_sequence,SEQUENCE_NAME,cost
         sm_log, indel_log = build_om_indelslog_variant_NO(STATES_LABELS, df_sequence,frac=0.5)
         dist = get_distance_matrix(seqdata=sequence, method='OM', sm=sm_log,
                                  indel=indel_log, norm="auto", full_matrix=True)
-    elif metric == 'OM_INDELSLOG2':
+    elif metric == 'OM_INDELSLOG_F':
         #OPTIMAL MATCHING with custom substitution cost matrix and state dependent indel costs based on the log of the inverse of the state frequence 
         sm_log2, indel_log2 = build_om_indelslog2(STATES_LABELS, df_sequence)
         dist = get_distance_matrix(seqdata=sequence, method='OM', sm=sm_log2,
@@ -65,6 +65,9 @@ def compute_dissimilarity_matrix(metric,sequence, df_sequence,SEQUENCE_NAME,cost
     elif metric == 'OM_INDELSQRT':
         sm_sqrt, indel_sqrt = build_om_indelsqrt(STATES_LABELS, df_sequence)
         dist = get_distance_matrix(seqdata=sequence, method='OM', sm=sm_sqrt, indel=indel_sqrt, norm="auto", full_matrix=True)
+    elif metric == 'OM_INDELSQRT_F':
+            sm_sqrt, indel_sqrt = build_om_indelsqrt2(STATES_LABELS, df_sequence)
+            dist = get_distance_matrix(seqdata=sequence, method='OM', sm=sm_sqrt, indel=indel_sqrt, norm="auto", full_matrix=True)   
     elif metric == 'HAM':
         #HAMMING DISTANCE with mismatch cost of 1
         dist=hamming_distance_matrix(df_sequence)
@@ -104,6 +107,13 @@ def compute_dissimilarity_matrix(metric,sequence, df_sequence,SEQUENCE_NAME,cost
     elif metric == 'LCS_NO':
         #LONGEST COMMON SUBSEQUENCE without considering subsequences with all no (nessuna diagnosi)
         dist=lcs_distance_matrix(df_sequence, no_state='NO')
+    elif metric == 'LCS_1':
+        #LONGEST COMMON SUBSEQUENCE considering longest subsequences with at least one non-no state (at least one diagnosis)
+        dist=lcs_constrained_distance_matrix(df_sequence, no_state='NO')
+    elif metric == 'LCS_NO_WEIGHTED':
+        #LONGEST COMMON SUBSEQUENCE with weighted count for states NO
+        dist=lcs_weighted_distance_matrix(df_sequence, no_state='NO', w_no=0.15)
+
     else:
         raise ValueError(f"Unknown distance metric: {metric}")
     
@@ -206,6 +216,7 @@ def build_om_indelslog(states_labels, df_sequence):
                 sm[i, j] = indel_per_state[a] + indel_per_state[b]
 
     indel = np.array([indel_per_state[s] for s in states])
+    print("indel costs:", indel)
 
     return sm, indel
 
@@ -290,7 +301,10 @@ def build_om_indelslog2(states_labels, df_sequence):
         F[s] = np.sum(np.any(seq_matrix == s, axis=1))
         F[s] = max(F[s], 1)  # evita log(inf) se lo stato non compare mai
 
+    print("Frequencies (number of sequences containing each state):", F)
+
     indel_per_state = {s: np.log(N / F[s]) for s in states}
+    print("Indel costs (log(N/F)):", indel_per_state)
 
     sm = np.zeros((n, n), dtype=float)
     for i, a in enumerate(states):
@@ -363,6 +377,52 @@ def build_om_indelsqrt(states_labels, df_sequence):
 
     freq = {s: np.sum(seq_matrix == s) / total_cells for s in states}
     indel_per_state = {s: 1.0 / np.sqrt(freq[s]) for s in states}
+
+    sm = np.zeros((n, n), dtype=float)
+    for i, a in enumerate(states):
+        for j, b in enumerate(states):
+            if a != b:
+                sm[i, j] = indel_per_state[a] + indel_per_state[b]
+
+    indel = np.array([indel_per_state[s] for s in states])
+
+    return sm, indel
+
+#indels srt but frequency = to the proportion of sequences in which the state appears at least once (i.e. the IDF-style frequency used in build_om_indelslog2)
+def build_om_indelsqrt2(states_labels, df_sequence):
+    """
+    Builds state-dependent indel costs and the associated substitution cost
+    matrix for OM_INDELSSQRT2 (variante IDF-style, frequenza a livello di
+    sequenza invece che di singola cella).
+
+    Cost structure:
+        indel(s) = sqrt( N / F(s) )
+                    dove N    = numero totale di sequenze (bambini)
+                            F(s) = numero di sequenze in cui lo stato s compare
+                                almeno una volta
+        sm(i, j) = indel(i) + indel(j)   per i != j
+        sm(i, i) = 0.0
+
+    Returns:
+        sm:    np.ndarray (n_states, n_states) substitution cost matrix
+        indel: np.ndarray (n_states,) state-dependent indel costs, stesso
+                ordine di states_labels.keys()
+    """
+    states = list(states_labels.keys())
+    n = len(states)
+
+    seq_matrix = df_sequence.drop(columns=['pedianet_id']).values
+    N = seq_matrix.shape[0]
+
+    F = {}
+    for s in states:
+        F[s] = np.sum(np.any(seq_matrix == s, axis=1))
+        F[s] = max(F[s], 1)  # evita log(inf) se lo stato non compare mai
+
+    print("Frequencies (number of sequences containing each state):", F)
+
+    indel_per_state = {s: np.sqrt(N / F[s]) for s in states}
+    print("Indel costs (sqrt(N/F)):", indel_per_state)
 
     sm = np.zeros((n, n), dtype=float)
     for i, a in enumerate(states):
@@ -801,6 +861,181 @@ def lcs_distance_matrix(df_sequence, no_state='NO'):
     np.fill_diagonal(distance_matrix, 0.0)
     return distance_matrix
 
+#LCS considering longest common subsequence with at least one event (not all NO)
+import numpy as np
+from numba import njit, prange
 
 
+@njit
+def _lcs_event_constrained(seq_a, seq_b, no_idx):
+  la, lb = len(seq_a), len(seq_b)
+  # dp0: paths containing only NO states
+  dp0 = np.zeros((la + 1, lb + 1), dtype=np.int32)
+  # dp1: paths including at least one genuine clinical event (initialized to -1)
+  dp1 = np.full((la + 1, lb + 1), -1, dtype=np.int32)
 
+  for i in range(1, la + 1):
+    for j in range(1, lb + 1):
+      a = seq_a[i - 1]
+      b = seq_b[j - 1]
+
+      # Propagation from top or left
+      best_0 = max(dp0[i - 1, j], dp0[i, j - 1])
+      best_1 = max(dp1[i - 1, j], dp1[i, j - 1])
+
+      if a == b:
+        if a == no_idx:
+          # NO match: extends both branches
+          best_0 = max(best_0, dp0[i - 1, j - 1] + 1)
+          if dp1[i - 1, j - 1] != -1:
+            best_1 = max(best_1, dp1[i - 1, j - 1] + 1)
+        else:
+          # Clinical match: triggers a valid dp1 branch
+          best_1 = max(best_1, dp0[i - 1, j - 1] + 1)
+          if dp1[i - 1, j - 1] != -1:
+            best_1 = max(best_1, dp1[i - 1, j - 1] + 1)
+
+      dp0[i, j] = best_0
+      dp1[i, j] = best_1
+
+  res = dp1[la, lb]
+  return np.int32(res) if res > 0 else np.int32(0)
+
+
+@njit(parallel=True)
+def _compute_lcs_constrained_matrix(sequence_idx, no_idx, m, n):
+  distance_matrix = np.zeros((n, n), dtype=np.float32)
+
+  for i in prange(n):
+    for j in range(i + 1, n):
+      lcs_val = _lcs_event_constrained(sequence_idx[i], sequence_idx[j], no_idx)
+      dist = 1.0 - (np.float32(lcs_val) / np.float32(m))
+      distance_matrix[i, j] = dist
+      distance_matrix[j, i] = dist
+
+  return distance_matrix
+
+
+def lcs_constrained_distance_matrix(df_sequence, no_state='NO'):
+  """Computes the constrained LCS distance matrix, ensuring that the
+
+  longest common subsequence contains at least one common clinical event.
+
+  Parameters:
+  -----------
+  df_sequence : pandas.DataFrame
+      DataFrame containing the sequence data (optionally with 'pedianet_id').
+  no_state : str, default 'NO'
+      The label representing the baseline/asymptomatic state.
+
+  Returns:
+  --------
+  np.ndarray
+      Pairwise normalized distance matrix.
+  """
+  if 'pedianet_id' in df_sequence.columns:
+    sequence_data = df_sequence.drop(columns=['pedianet_id']).values
+  else:
+    sequence_data = df_sequence.values
+
+  n, m = sequence_data.shape
+
+  states = list(dict.fromkeys(sequence_data.flatten()))
+  state_to_idx = {s: i for i, s in enumerate(states)}
+  no_idx = np.int32(state_to_idx[no_state])
+
+  sequence_idx = np.vectorize(state_to_idx.get)(sequence_data).astype(np.int32)
+
+  print('Compiling Numba functions and computing distance matrix...')
+  distance_matrix = _compute_lcs_constrained_matrix(sequence_idx, no_idx, m, n)
+
+  np.fill_diagonal(distance_matrix, 0.0)
+  return distance_matrix
+
+
+import numpy as np
+from numba import njit, prange
+
+
+@njit
+def _lcs_weighted(seq_a, seq_b, no_idx, w_no):
+  la, lb = len(seq_a), len(seq_b)
+  dp = np.zeros((la + 1, lb + 1), dtype=np.float32)
+
+  for i in range(1, la + 1):
+    for j in range(1, lb + 1):
+      if seq_a[i - 1] == seq_b[j - 1]:
+        # Assign full weight (1.0) to clinical matches and damped weight to NO matches
+        match_weight = np.float32(w_no) if seq_a[i - 1] == no_idx else np.float32(1.0)
+        dp[i, j] = dp[i - 1, j - 1] + match_weight
+      else:
+        # Standard LCS propagation
+        dp[i, j] = max(dp[i - 1, j], dp[i, j - 1])
+
+  return dp[la, lb]
+
+
+@njit(parallel=True)
+def _compute_lcs_weighted_matrix(sequence_idx, no_idx, w_no, n):
+  distance_matrix = np.zeros((n, n), dtype=np.float32)
+
+  # Precompute maximum self-alignment scores for each sequence
+  self_scores = np.zeros(n, dtype=np.float32)
+  for i in range(n):
+    self_scores[i] = _lcs_weighted(sequence_idx[i], sequence_idx[i], no_idx, w_no)
+
+  # Compute pairwise dissimilarities with standard normalization
+  for i in prange(n):
+    for j in range(i + 1, n):
+      score_ab = _lcs_weighted(sequence_idx[i], sequence_idx[j], no_idx, w_no)
+      norm_factor = np.sqrt(self_scores[i] * self_scores[j])
+      if norm_factor > 0.0:
+        dist = 1.0 - (score_ab / norm_factor)
+      else:
+        dist = 1.0
+      distance_matrix[i, j] = dist
+      distance_matrix[j, i] = dist
+
+  return distance_matrix
+
+
+def lcs_weighted_distance_matrix(df_sequence, no_state='NO', w_no=0.1):
+  """Computes the state-weighted LCS distance matrix, assigning a full score
+
+  (1.0) to active clinical diagnoses and an attenuated score (w_no) to the
+  baseline NO state.
+
+  Parameters:
+  -----------
+  df_sequence : pandas.DataFrame
+      DataFrame containing sequence data (with or without 'pedianet_id').
+  no_state : str, default 'NO'
+      The label representing the baseline/asymptomatic state.
+  w_no : float, default 0.1
+      Weight assigned to matches between identical 'NO' states (0 <= w_no < 1).
+
+  Returns:
+  --------
+  np.ndarray
+      Pairwise normalized dissimilarity matrix in [0, 1].
+  """
+  if 'pedianet_id' in df_sequence.columns:
+    sequence_data = df_sequence.drop(columns=['pedianet_id']).values
+  else:
+    sequence_data = df_sequence.values
+
+  n, m = sequence_data.shape
+
+  states = list(dict.fromkeys(sequence_data.flatten()))
+  state_to_idx = {s: i for i, s in enumerate(states)}
+  no_idx = np.int32(state_to_idx[no_state])
+
+  sequence_idx = np.vectorize(state_to_idx.get)(sequence_data).astype(np.int32)
+
+  print('Compiling Numba functions and computing weighted LCS distance matrix...')
+  distance_matrix = _compute_lcs_weighted_matrix(
+      sequence_idx, no_idx, np.float32(w_no), n
+  )
+
+  np.fill_diagonal(distance_matrix, 0.0)
+  return distance_matrix

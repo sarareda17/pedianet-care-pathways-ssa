@@ -16,12 +16,12 @@ def run_prediction():
     """
 
     ########### SET UP ###########
-    PRED_NAME='target_lrti' #name of the prediction task: 'target_lrti' or 'target_obs_drugs'
+    PRED_NAME='target_obs_drugs' #name of the prediction task: 'target_lrti' or 'target_obs_drugs' or 'target_obesity' or 'target_BMI'
     #possible features are: 'sex','age','cluster','entropy','turbulence','num_transitions','adi','num_subsequences','complexity','variance_of_spell','count', 'months_last_event','last_year_events'
-    FEATURES=['sex','age','cluster','entropy','num_transitions','complexity','turbulence','num_subsequences','count', 'variance_of_spell', 'months_last_event','last_year_events'] #features to use for prediction
+    FEATURES=['sex','age','cluster','entropy','num_transitions','complexity','turbulence','last_year_events','months_last_event','count'] #features to use for prediction
     CAT_FEATURES=['sex','cluster'] #categorical features to use for prediction
     MODEL='cox_regression' #model to use for prediction: 'logistic_regression' or 'cox_regression' or 'lasso_regression' or 'cox_time_varying' or cox_strata_entropy' or 'cox_time_varying_strata' or 'cox_strata_cluster'
-
+    STRATA='last_year_events' #stratification variable
     (PRED_FOLDER/PRED_NAME).mkdir(parents=True, exist_ok=True)
 
     if SEASON==True:
@@ -38,7 +38,9 @@ def run_prediction():
         patients_pred=patients_sequences[(pd.to_datetime(patients_sequences['EF'])-pd.to_datetime(patients_sequences['end_date'])).dt.days>365]
         #load datasets useful to set up the prediction target: patients with the event and time to event
         macrodiag_breath=pd.read_csv(ROOT/'SSA'/'datasets'/'macrodiagnoses_breath.csv')
-        #drugs_breath=pd.read_csv(ROOT/'SSA'/'datasets'/'drugs_breath.csv')
+        drugs_breath=pd.read_csv(ROOT/'SSA'/'datasets'/'drugs_breath.csv')
+        bmi_data=pd.read_excel(ROOT/'data'/'Misure_BMIzscore.xlsx')
+        bmi_data_after_sequence=bmi_data[bmi_data['agemos']>12*YEARS] #select only measurements after the end of the sequence
     
     print(f'The number of patients included in the prediction dataset is: {len(patients_pred)}/{len(patients_sequences)}')
 
@@ -94,6 +96,53 @@ def run_prediction():
                 # max(0.1, ...) preventing crashes
                 target_patients.loc[patient['pedianet_id'], 'months'] = max(0.1, months_val)
         print(f'The number of patients with at least 2 prescription of R03 atc drugs in the follow up period is: {count_patient}/{len(patients_pred)}')
+
+    elif PRED_NAME=='target_obesity':
+        #select only pateints from pateints_pred that have at least one measurement after the end of the sequence
+        patients_pred=patients_pred[patients_pred['pedianet_id'].isin(bmi_data_after_sequence['pedianet_id'].unique())] 
+        #target: patients that have at least 1 obesity measurement in the follow up period of 1 year after the end of the sequence
+        target_patients = pd.DataFrame(
+            {'target': 0, 'months': 12.0}, 
+            index=patients_pred['pedianet_id']
+        )
+        target_patients['months'] = target_patients['months'].astype(float)
+        count_patient=0
+        for idx, patient in patients_pred.iterrows():
+            patient_bmi=bmi_data[bmi_data['pedianet_id']==patient['pedianet_id']]
+            bmi_after_end_date=patient_bmi[(patient_bmi['agemos']>36) & (patient_bmi['agemos']<=48)]
+            selected_bmi=bmi_after_end_date[bmi_after_end_date['BMIwho']>3]
+            #check if there are at least 1 obesity measurement in the follow up period
+            if len(selected_bmi)>=1:
+                count_patient+=1
+                target_patients.loc[patient['pedianet_id'],'target']=1  
+                selected_bmi=selected_bmi.sort_values(by='agemos')
+                first_bmi_date=selected_bmi['agemos'].min()
+                months_val=first_bmi_date-36
+                # max(0.1, ...) preventing crashes
+                target_patients.loc[patient['pedianet_id'], 'months'] = max(0.1, months_val)
+    elif PRED_NAME=='target_bmi':
+            #select only pateints from pateints_pred that have at least one measurement after the end of the sequence
+            patients_pred=patients_pred[patients_pred['pedianet_id'].isin(bmi_data_after_sequence['pedianet_id'].unique())]
+            #target: patients that have at least 1 obesity or overweight measurement in the follow up period of 1 year after the end of the sequence
+            target_patients = pd.DataFrame(
+                {'target': 0, 'months': 12.0}, 
+                index=patients_pred['pedianet_id']
+            )
+            target_patients['months'] = target_patients['months'].astype(float)
+            count_patient=0
+            for idx, patient in patients_pred.iterrows():
+                patient_bmi=bmi_data[bmi_data['pedianet_id']==patient['pedianet_id']]
+                bmi_after_end_date=patient_bmi[(patient_bmi['agemos']>36) & (patient_bmi['agemos']<=48)] 
+                selected_bmi=bmi_after_end_date[bmi_after_end_date['BMIwho']>2]
+                #check if there are at least 1 obesity or overweight measurement in the follow up period
+                if len(selected_bmi)>=1:
+                    count_patient+=1
+                    target_patients.loc[patient['pedianet_id'],'target']=1  
+                    selected_bmi=selected_bmi.sort_values(by='agemos')
+                    first_bmi_date=selected_bmi['agemos'].min()
+                    months_val=first_bmi_date-36
+                    # max(0.1, ...) preventing crashes
+                    target_patients.loc[patient['pedianet_id'], 'months'] = max(0.1, months_val)
 
 
     #load features we want to use to predict the target
@@ -186,7 +235,7 @@ def run_prediction():
     #choose the dataset based on the model selected
     if MODEL=='logistic_regression' or MODEL=='lasso_regression':
         pred_dataset=pred_dataset_log
-    elif MODEL=='cox_regression' or MODEL=='cox_time_varying_strata' or MODEL=='cox_time_varying' or MODEL=='cox_strata_entropy' or MODEL=='cox_strata_cluster':
+    elif MODEL=='cox_regression' or MODEL=='cox_time_varying_strata' or MODEL=='cox_time_varying' or MODEL=='cox_strata_numerical' or MODEL=='cox_strata_categorical' or MODEL=='cox_strata_cluster':
         pred_dataset=pred_dataset_cox
 
     ########### DATASET PREPROCESSING ###########
@@ -261,15 +310,15 @@ def run_prediction():
     numeric_cols = [col for col in pred_dataset.columns if col not in ['target', 'duration'] + cluster_cols + CAT_FEATURES]
 
     if cluster_cols and numeric_cols:
-        from scipy.stats import pointbiserialr
+        from scipy.stats import pointbiserialr,spearmanr
         corr_matrix = pd.DataFrame(index=cluster_cols, columns=numeric_cols, dtype=float)
 
         for cluster_col in cluster_cols:
             for num_col in numeric_cols:
-                corr, _ = pointbiserialr(pred_dataset[cluster_col], pred_dataset[num_col])
+                corr, _ = spearmanr(pred_dataset[cluster_col], pred_dataset[num_col])
                 corr_matrix.loc[cluster_col, num_col] = corr
 
-        # heatmap of point-biserial correlations
+        # heatmap of spearman correlations
         fig_width = max(10, len(numeric_cols) * 0.9)
         fig_height = max(5, len(cluster_cols) * 0.8)
         
@@ -282,19 +331,19 @@ def run_prediction():
             center=0,
             vmin=-1,
             vmax=1,
-            cbar_kws={'label': 'Point-Biserial Correlation ($r_{pb}$)'},
+            cbar_kws={'label': 'Spearman Correlation ($r_{s}$)'},
             linewidths=0.5,
             linecolor='white'
         )
 
-        plt.title('Point-Biserial Correlations: Trajectory Clusters vs Continuous Features', fontsize=12, pad=12)
+        plt.title('Spearman Correlations: Trajectory Clusters vs Continuous Features', fontsize=12, pad=12)
         plt.xlabel('Continuous Variables', fontsize=10)
         plt.ylabel('Cluster Dummies', fontsize=10)
         plt.xticks(rotation=45, ha='right')
         plt.yticks(rotation=0)
         plt.tight_layout()
 
-        plt.savefig(PRED_FOLDER / PRED_NAME / 'point_biserial_correlations_heatmap.png', dpi=300)
+        plt.savefig(PRED_FOLDER / PRED_NAME / 'spearman_correlations_heatmap.png', dpi=300)
         
 
     ############ PREDICTION MODEL ############
@@ -559,30 +608,30 @@ def run_prediction():
         )
         print(f"    --> Overall Stratified C-index (weighted by events): {stratified_c_index:.3f}")
 
-    elif MODEL == 'cox_strata_entropy':
+    elif MODEL == 'cox_strata_numerical':
         ############ COX PROPORTIONAL HAZARDS MODEL (Stratified by Entropy) ############
         from lifelines import CoxPHFitter
         from lifelines.utils import concordance_index
 
         df_strata = pred_dataset.copy()
-
-        # 1. Discretize continuous entropy into balanced quantiles 
-        df_strata['entropy_strata'] = pd.qcut(
-            df_strata['entropy'],
+        #create variable to stratified based on STRATA
+        df_strata[f'{STRATA}_strata'] = pd.qcut(
+            df_strata[STRATA],
             q=4,
-            labels=['entropy_1', 'entropy_2', 'entropy_3', 'entropy_4']
+            labels=[f'{STRATA}_1', f'{STRATA}_2', f'{STRATA}_3', f'{STRATA}_4']
         )
 
+
         # 2. Exclude 'entropy' from covariates to estimate
-        features_without_entropy = [f for f in features_name if f != 'entropy']
+        features_without_entropy = [f for f in features_name if f != STRATA]
 
         # 3. Fit the stratified Cox model
         cph = CoxPHFitter()
         cph.fit(
-            df_strata[features_without_entropy + ['entropy_strata', 'target', 'duration']],
+            df_strata[features_without_entropy + [f'{STRATA}_strata', 'target', 'duration']],
             duration_col='duration',
             event_col='target',
-            strata='entropy_strata'
+            strata=f'{STRATA}_strata'
         )
 
         # Full model summary: coefficients, hazard ratios, p-values, 95% CI
@@ -603,7 +652,7 @@ def run_prediction():
         c_indices = {}
         event_counts = {}
         print("\n--- Concordance Index by Entropy Stratum ---")
-        for s_name, group in df_strata.groupby('entropy_strata'):
+        for s_name, group in df_strata.groupby(f'{STRATA}_strata'):
             n_ev = int(group['target'].sum())
             if n_ev > 0:
                 c_val = concordance_index(group['duration'], -group['pred_hazard'], group['target'])
@@ -616,9 +665,9 @@ def run_prediction():
 
         ############ 3. CHECK PROPORTIONAL HAZARDS ASSUMPTION ############
         print("\n--- Proportional Hazards Assumption Check ---")
-        # Entropy will no longer trigger a violation flag because it has been absorbed by the strata
+        # The variable used for stratification will no longer trigger a violation flag because it has been absorbed by the strata
         cph.check_assumptions(
-            df_strata[features_without_entropy + ['entropy_strata', 'target', 'duration']],
+            df_strata[features_without_entropy + [f'{STRATA}_strata', 'target', 'duration']],
             p_value_threshold=0.05
         )
 
@@ -626,13 +675,87 @@ def run_prediction():
         # Plot the distinct non-proportional baseline curves across entropy tertiles
         fig, ax = plt.subplots(figsize=(8, 6))
         cph.baseline_cumulative_hazard_.plot(ax=ax)
-        plt.title('Baseline Cumulative Hazard Stratified by Entropy Tertile')
+        plt.title(f'Baseline Cumulative Hazard Stratified by {STRATA} Tertile')
         plt.xlabel('Months')
         plt.ylabel('Cumulative Hazard')
         plt.grid(True, linestyle='--', alpha=0.5)
         plt.tight_layout()
-        plt.savefig(PRED_FOLDER / PRED_NAME / 'cox_entropy_stratified_baseline.png')
+        plt.savefig(PRED_FOLDER / PRED_NAME / f'cox_{STRATA}_stratified_baseline.png')
         plt.close()  
+
+    elif MODEL == 'cox_strata_categorical':
+            ############ COX PROPORTIONAL HAZARDS MODEL (Stratified by Entropy) ############
+            from lifelines import CoxPHFitter
+            from lifelines.utils import concordance_index
+    
+            df_strata = pred_dataset.copy()
+            #create variable to stratified based on STRATA which is a discrete categorical variable
+            df_strata[f'{STRATA}_strata'] = pd.cut(
+                    df_strata[STRATA],
+                    bins=4,
+                    labels=[f'{STRATA}_{i+1}' for i in range(4)]
+                ).astype(str)
+    
+            # 2. Exclude 'entropy' from covariates to estimate
+            features_without_entropy = [f for f in features_name if f != STRATA]
+    
+            # 3. Fit the stratified Cox model
+            cph = CoxPHFitter()
+            cph.fit(
+                df_strata[features_without_entropy + [f'{STRATA}_strata', 'target', 'duration']],
+                duration_col='duration',
+                event_col='target',
+                strata=f'{STRATA}_strata'
+            )
+    
+            # Full model summary: coefficients, hazard ratios, p-values, 95% CI
+            cph.print_summary()
+    
+            ############ 1. HAZARD RATIOS TABLE ############
+            hr_table = cph.summary[['coef', 'exp(coef)', 'p', 
+                                    'exp(coef) lower 95%', 'exp(coef) upper 95%']]
+            hr_table = hr_table.sort_values(by='exp(coef)', ascending=False)
+            print("\n--- Hazard Ratios ---")
+            print(hr_table)
+    
+            ############ 2. STRATIFIED CONCORDANCE INDEX ############
+            # Compute intra-stratum C-index to evaluate discrimination within matched risk baselines
+            pred_risk = cph.predict_partial_hazard(df_strata[features_without_entropy])
+            df_strata['pred_hazard'] = pred_risk
+    
+            c_indices = {}
+            event_counts = {}
+            print("\n--- Concordance Index by Entropy Stratum ---")
+            for s_name, group in df_strata.groupby(f'{STRATA}_strata'):
+                n_ev = int(group['target'].sum())
+                if n_ev > 0:
+                    c_val = concordance_index(group['duration'], -group['pred_hazard'], group['target'])
+                    c_indices[s_name] = c_val
+                    event_counts[s_name] = n_ev
+                    print(f"  * Stratum {s_name}: C-index = {c_val:.3f} ({n_ev} events)")
+    
+            stratified_c_index = sum(c_indices[s] * event_counts[s] for s in c_indices) / sum(event_counts.values())
+            print(f"--> Overall Stratified C-index: {stratified_c_index:.3f}")
+    
+            ############ 3. CHECK PROPORTIONAL HAZARDS ASSUMPTION ############
+            print("\n--- Proportional Hazards Assumption Check ---")
+            # The variable used for stratification will no longer trigger a violation flag because it has been absorbed by the strata
+            cph.check_assumptions(
+                df_strata[features_without_entropy + [f'{STRATA}_strata', 'target', 'duration']],
+                p_value_threshold=0.05
+            )
+    
+            ############ 4. STRATIFIED BASELINE CUMULATIVE HAZARD ############
+            # Plot the distinct non-proportional baseline curves across entropy tertiles
+            fig, ax = plt.subplots(figsize=(8, 6))
+            cph.baseline_cumulative_hazard_.plot(ax=ax)
+            plt.title(f'Baseline Cumulative Hazard Stratified by {STRATA} Tertile')
+            plt.xlabel('Months')
+            plt.ylabel('Cumulative Hazard')
+            plt.grid(True, linestyle='--', alpha=0.5)
+            plt.tight_layout()
+            plt.savefig(PRED_FOLDER / PRED_NAME / f'cox_{STRATA}_stratified_baseline.png')
+            plt.close()  
 
     elif MODEL == 'cox_strata_cluster':
         ############ COX PROPORTIONAL HAZARDS MODEL (Stratified by Cluster) ############
