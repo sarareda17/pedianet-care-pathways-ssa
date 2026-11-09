@@ -71,6 +71,9 @@ def compute_dissimilarity_matrix(metric,sequence, df_sequence,SEQUENCE_NAME,cost
     elif metric == 'HAM':
         #HAMMING DISTANCE with mismatch cost of 1
         dist=hamming_distance_matrix(df_sequence)
+    elif metric == 'HAM_WIND_1':
+            #HAMMING DISTANCE with rolling windows 
+            dist=hamming_windows_distance_matrix(df_sequence, window_extension=1, batch_size=500)
     elif metric == 'HAM_WIND_2':
         #HAMMING DISTANCE with rolling windows 
         dist=hamming_windows_distance_matrix(df_sequence, window_extension=2, batch_size=500)
@@ -113,6 +116,9 @@ def compute_dissimilarity_matrix(metric,sequence, df_sequence,SEQUENCE_NAME,cost
     elif metric == 'LCS_NO_WEIGHTED':
         #LONGEST COMMON SUBSEQUENCE with weighted count for states NO
         dist=lcs_weighted_distance_matrix(df_sequence, no_state='NO', w_no=0.15)
+    elif metric == 'TED':
+        #TEMPORAL EDIT DISTANCE with fixed costs
+        dist=TED(df_sequence, c_sub=2.0, c_ins=1.0, c_del=2.0, c_time=0.5)
 
     else:
         raise ValueError(f"Unknown distance metric: {metric}")
@@ -1039,3 +1045,125 @@ def lcs_weighted_distance_matrix(df_sequence, no_state='NO', w_no=0.1):
 
   np.fill_diagonal(distance_matrix, 0.0)
   return distance_matrix
+
+###### Temporal Edit Distance (TED) implementation
+###### optimal matching variant 
+import numpy as np
+import pandas as pd
+from numba import njit
+
+@njit
+def compute_all_pairs_single_thread(states_flat, times_flat, offsets, lengths, c_sub, c_ins, c_del, c_time):
+    n_samples = len(lengths)
+    dist_matrix = np.zeros((n_samples, n_samples), dtype=np.float32)
+    
+    # Pre-allocate a static DP table (maximum size 37x37 since there are 36 time steps)
+    # Reusing this buffer avoids 144.5M memory allocations
+    D = np.zeros((37, 37), dtype=np.float32)
+    
+    for i in range(n_samples):
+        len_a = lengths[i]
+        off_a = offsets[i]
+        
+        for j in range(i + 1, n_samples):
+            len_b = lengths[j]
+            off_b = offsets[j]
+            
+            # 1. Base conditions for the current pair
+            for r in range(1, len_a + 1):
+                D[r, 0] = r * c_del
+            for c in range(1, len_b + 1):
+                D[0, c] = c * c_ins
+                
+            # 2. Dynamic programming recurrence
+            for r in range(1, len_a + 1):
+                idx_a = off_a + r - 1
+                sa = states_flat[idx_a]
+                ta = times_flat[idx_a]
+                
+                for c in range(1, len_b + 1):
+                    idx_b = off_b + c - 1
+                    sb = states_flat[idx_b]
+                    tb = times_flat[idx_b]
+                    
+                    if sa == sb:
+                        diff = ta - tb
+                        if diff < 0:
+                            diff = -diff
+                        cost_sub = c_time * diff
+                    else:
+                        cost_sub = c_sub
+                        
+                    c_diag = D[r - 1, c - 1] + cost_sub
+                    c_up = D[r - 1, c] + c_del
+                    c_left = D[r, c - 1] + c_ins
+                    
+                    # Compute min(c_diag, c_up, c_left)
+                    min_val = c_diag
+                    if c_up < min_val:
+                        min_val = c_up
+                    if c_left < min_val:
+                        min_val = c_left
+                        
+                    D[r, c] = min_val
+                    
+            val = D[len_a, len_b]
+            dist_matrix[i, j] = val
+            dist_matrix[j, i] = val
+            
+    return dist_matrix
+
+
+def TED(df_sequence, c_sub=2.0, c_ins=1.0, c_del=2.0, c_time=0.5):
+    """
+    Computes the pairwise TED dissimilarity matrix using single-threaded Numba.
+    Ignores 'NO' states while preserving step indices (0 to 35).
+    """
+    # Drop identifier column if present
+    if 'pedianet_id' in df_sequence.columns:
+        seq_df = df_sequence.drop(columns=['pedianet_id'])
+    else:
+        seq_df = df_sequence.copy()
+        
+    values = seq_df.values
+    n_samples, n_steps = values.shape
+    
+    # 1. Map categorical states to unique integers, excluding 'NO'
+    unique_states = [s for s in np.unique(values) if pd.notna(s) and str(s).strip() != 'NO']
+    state_to_id = {state: idx + 1 for idx, state in enumerate(unique_states)}
+    
+    # 2. Flatten data into contiguous 1D arrays for Numba
+    all_states = []
+    all_times = []
+    offsets = np.zeros(n_samples, dtype=np.int32)
+    lengths = np.zeros(n_samples, dtype=np.int32)
+    
+    current_offset = 0
+    for i in range(n_samples):
+        row = values[i]
+        cnt = 0
+        for t in range(n_steps):
+            val = row[t]
+            if pd.notna(val):
+                val_str = str(val).strip()
+                if val_str != 'NO' and val_str in state_to_id:
+                    all_states.append(state_to_id[val_str])
+                    all_times.append(t)
+                    cnt += 1
+                    
+        offsets[i] = current_offset
+        lengths[i] = cnt
+        current_offset += cnt
+        
+    states_flat = np.array(all_states, dtype=np.int16)
+    times_flat = np.array(all_times, dtype=np.int16)
+    
+    print(f"Starting computation for {n_samples} sequences (~144.5M pairs) on a single core...")
+    
+    dist_matrix = compute_all_pairs_single_thread(
+        states_flat, times_flat, offsets, lengths,
+        np.float32(c_sub), np.float32(c_ins), np.float32(c_del), np.float32(c_time)
+    )
+    
+    print("Computation completed successfully.")
+    return dist_matrix

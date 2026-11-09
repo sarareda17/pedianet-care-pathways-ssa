@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
-from config import SEQUENCE_NAME, STATES_LABELS, TIME_UNIT, SEQ_LENGTH, DISTANCE_METRIC, MAX_CLUSTERS, NUM_CLUSTERS, COSTS,CUSTOM_COLORS, CLUSTERING, LINKAGE
+from config import SEQUENCE_NAME, STATES_LABELS, TIME_UNIT, SEQ_LENGTH, COVARIATES, DISTANCE_METRIC, MAX_CLUSTERS, NUM_CLUSTERS, COSTS,CUSTOM_COLORS, CLUSTERING, LINKAGE
 
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -23,7 +23,6 @@ def run_sequence_analysis():
     #import dataset with sequences
     df=pd.read_csv(ROOT/'SSA'/'datasets'/ f'{SEQUENCE_NAME}.csv')
     time_cols=[df.columns[i] for i in range(len(df.columns)) if df.columns[i].isdigit()]
-    cov_cols=[col for col in df.columns if col not in time_cols]
     df_sequence=df[['pedianet_id'] + time_cols]
 
 
@@ -65,9 +64,10 @@ def run_sequence_analysis():
 
 
     ##### CLUSTER ANALYSIS #####
-    from utils_SSA import clustering_analysis, cluster_summary_table
+    from utils_SSA import clustering_analysis, cluster_summary_table, descriptive_stats_table
     clustering_analysis(df_sequence,cluster_labels, distance_matrix)
     summary_table=cluster_summary_table(df_sequence, cluster_labels)
+    descriptive_stats_table(df, cluster_labels)
 
 
     return cluster_labels, distance_matrix, summary_table

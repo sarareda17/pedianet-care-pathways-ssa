@@ -1,6 +1,5 @@
 #################################### STATE SEQUENCE ANALYSIS CONFIGURATION #####################################
 #---- CHANNELS ----
-
 channels={
     #DIAGNOSES SEQUENCES specific parameters
     'diagnoses': {
@@ -240,14 +239,14 @@ channels={
     }    
 
 }
-#---- Flag for time choice ----
+#---- Flag for alignment/time choice ----
 #if season is True, sequences are aligned by season, otherwise by age 
 SEASON=False
 
 
 # ---- Sequence channel to analyze ----
 #options: 'diagnoses','macrodiagnoses', 'supermacrodiagnoses','drugs','secondary_care','health'
-CHANNEL='macrodiagnoses'
+CHANNEL='secondary_care'
 CHANNEL_1='drugs' 
 CHANNEL_2='secondary_care' 
 CHANNEL_3='health'
@@ -392,7 +391,7 @@ SEQUENCE_NAME_3 = f'seq_{CHANNEL_3}_{TIME_UNIT_3}_{SEQ_LENGTH_3}'
 #'OM' = Optimal Matching, OM_CONSTANT = Optimal Matching with constant substitution costs, 'OM_DIAG' = Optimal Matching with diagonal substitution costs, 
 #'HAM' = Hamming distance, 'HAM_CONSTANT' = Hamming distance with constant substitution costs, 
 #'DHAM' = Dynamic Hamming distance, 'LCS' = Longest Common Subsequence
-DISTANCE_METRIC = 'LCS' 
+DISTANCE_METRIC = 'LCS_NO_WEIGHTED' 
 DISTANCE_METRIC_1= 'LCS'
 DISTANCE_METRIC_2= 'LCS'
 DISTANCE_METRIC_3= 'LCS'
@@ -409,5 +408,5 @@ LINKAGE='ward' #options: 'ward', 'complete', 'average', 'single','centroid','med
 
 #---- Clustering parameters ----
 MAX_CLUSTERS = 10 #maximum number of clusters to consider when evaluating cluster quality indicators
-NUM_CLUSTERS =4 #number of clusters to use for the final clustering solution (can be chosen based on the evaluation of cluster quality indicators)
+NUM_CLUSTERS =5 #number of clusters to use for the final clustering solution (can be chosen based on the evaluation of cluster quality indicators)
 

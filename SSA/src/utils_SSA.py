@@ -3,6 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import sequenzo
+import matplotlib.colors as mcolors
+import matplotlib.patches as mpatches
 from config import SEQUENCE_NAME, TIME_UNIT, SEQ_LENGTH, COSTS, STATES_LABELS, CUSTOM_COLORS, COL_ID, COL_STATE, COL_DATE,NUM_CHANNELS
 from config import DISTANCE_METRIC,CLUSTERING, LINKAGE, MAX_CLUSTERS, NUM_CLUSTERS
 from config import SEQUENCE_NAME_0,SEQUENCE_NAME_1,SEQUENCE_NAME_2, SEQUENCE_NAME_3, STATES_LABELS_1, STATES_LABELS_2 , STATES_LABELS_3
@@ -951,6 +953,19 @@ def hierarchical_clustering(sequence,distance_matrix):
     
     #get cluster labels
     cluster_labels=cluster_results.get_cluster_memberships(num_clusters=NUM_CLUSTERS)
+
+    cluster_labels_df=cluster_labels.copy()
+    # Sort original cluster IDs by size in descending order
+    size_ordered_clusters = cluster_labels_df['Cluster'].value_counts().index
+
+    # Create a mapping dictionary: most frequent -> 1, next -> 2, etc.
+    rank_mapping = {
+        old_cluster: new_rank
+        for new_rank, old_cluster in enumerate(size_ordered_clusters, start=1)
+    }
+
+    # Remap the 'Cluster' column with integer labels
+    cluster_labels_df['Cluster'] = cluster_labels_df['Cluster'].map(rank_mapping)
     #export cluster labels to csv
     cluster_labels.to_csv(ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f"cluster_labels_{DISTANCE_METRIC}.csv", index=False)
     #check distribution of cluster labels 
@@ -981,6 +996,7 @@ def hierarchical_clustering(sequence,distance_matrix):
     )
 
     return cluster_labels
+
 from scipy.spatial.distance import squareform
 from scipy.stats import pearsonr
 from scipy.cluster.hierarchy import fcluster
@@ -1042,8 +1058,8 @@ def evaluate_and_plot_cluster_metrics(Z, condensed_distance, distance_matrix, ma
 
     # Silhouette curve
     color_sil = 'tab:blue'
-    ax1.set_xlabel('Number of clusters (k)', fontweight='bold')
-    ax1.set_ylabel('Silhouette Score', color=color_sil, fontweight='bold')
+    ax1.set_xlabel('Number of clusters (k)')
+    ax1.set_ylabel('Silhouette Score', color=color_sil)
     line1 = ax1.plot(k_range, sil_scores, marker='o', color=color_sil, label='Silhouette', linewidth=2)
     ax1.tick_params(axis='y', labelcolor=color_sil)
     ax1.set_xticks(k_range)
@@ -1069,7 +1085,7 @@ def evaluate_and_plot_cluster_metrics(Z, condensed_distance, distance_matrix, ma
     labels_legend = [l.get_label() for l in lines]
     ax1.legend(lines, labels_legend, loc='best')
 
-    plt.title('Clustering Validation Indices', pad=15, fontweight='bold')
+    plt.title('Clustering Validation Indices', pad=15)
     plt.tight_layout()
 
     if save_path:
@@ -1117,7 +1133,44 @@ def hierarchical_clustering_custom(sequence,sequence_ids, distance_matrix):
     #final cluster labels for the specified number of clusters
     cluster_labels = fcluster(Z, t=NUM_CLUSTERS, criterion='maxclust')
     cluster_labels_df = pd.DataFrame({'Entity ID': sequence_ids, 'Cluster': cluster_labels})
+    # Sort original cluster IDs by size in descending order
+    size_ordered_clusters = cluster_labels_df['Cluster'].value_counts().index
+
+    # Create a mapping dictionary: most frequent -> 1, next -> 2, etc.
+    rank_mapping = {
+        old_cluster: new_rank
+        for new_rank, old_cluster in enumerate(size_ordered_clusters, start=1)
+    }
+
+    # Remap the 'Cluster' column with integer labels
+    cluster_labels_df['Cluster'] = cluster_labels_df['Cluster'].map(rank_mapping)
+    #Save cluster labels to CSV
     cluster_labels_df.to_csv(ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f"cluster_labels_{DISTANCE_METRIC}.csv", index=False)
+
+    # Compute cut height dynamically based on NUM_CLUSTERS
+    # Distances are in the 3rd column (index 2) of linkage matrix Z, sorted in ascending order
+    if NUM_CLUSTERS > 1:
+        cut_height = (Z[-NUM_CLUSTERS + 1, 2] + Z[-NUM_CLUSTERS, 2]) / 2.0
+    else:
+        cut_height = Z[-1, 2]
+
+    # Dendrogram plot
+    plt.figure(figsize=(12, 5))
+    dendrogram(Z, no_labels=True, color_threshold=0)
+    
+    # Draw the horizontal cut line
+    plt.axhline(
+        y=cut_height,
+        color='red',
+        linestyle='--',
+        linewidth=1.5,
+        label=f'Cut threshold (k={NUM_CLUSTERS}, y ≈ {cut_height:.2f})'
+    )
+    plt.title('Dendrogram')
+    plt.xlabel('Cluster size')
+    plt.ylabel('Distance')
+    plt.legend()
+    plt.savefig(ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME /CLUSTERING/DISTANCE_METRIC/ f"dendrogram_{DISTANCE_METRIC}_{LINKAGE}.png", dpi=300, bbox_inches='tight')
 
 
     if sequence is not None:
@@ -1154,8 +1207,21 @@ def Kmedoids_clustering(sequence, sequence_ids, distance_matrix):
     medoids   = result.medoids   
 
     pd_cluster_labels=pd.DataFrame({'Entity ID': sequence_ids, 'Cluster': labels})
+    cluster_labels_df=pd_cluster_labels
+    # Sort original cluster IDs by size in descending order
+    size_ordered_clusters = cluster_labels_df['Cluster'].value_counts().index
+
+    # Create a mapping dictionary: most frequent -> 1, next -> 2, etc.
+    rank_mapping = {
+        old_cluster: new_rank
+        for new_rank, old_cluster in enumerate(size_ordered_clusters, start=1)
+    }
+
+    # Remap the 'Cluster' column with integer labels
+    cluster_labels_df['Cluster'] = cluster_labels_df['Cluster'].map(rank_mapping)
+    
     #export cluster labels to csv
-    pd_cluster_labels.to_csv(ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f"cluster_labels_{DISTANCE_METRIC}.csv", index=False)
+    cluster_labels_df.to_csv(ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f"cluster_labels_{DISTANCE_METRIC}.csv", index=False)
 
 
     if sequence is not None:
@@ -1195,6 +1261,95 @@ def clustering_analysis(df_sequence,cluster_labels,distance_matrix):
     time_cols=[df.columns[i] for i in range(len(df.columns)) if df.columns[i].isdigit()]
 
 
+    # 0). STATE DISTRIBUTION PLOT BY CLUSTER 
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    state_to_color = dict(zip(STATES_LABELS.keys(), CUSTOM_COLORS))
+    states_to_plot = [s for s in STATES_LABELS.keys() if s != 'NO'] + ['NO']
+    colors = [state_to_color[s] for s in states_to_plot]
+
+    n_clusters = df['Cluster'].nunique()
+    n_cols = 3
+    n_rows = (n_clusters + n_cols - 1) // n_cols
+
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(18, 5.2 * n_rows))
+    axes = np.array(axes).flatten()
+
+    # Valori specifici dell'asse X come da figura
+    time_ticks = [0, 3, 7, 11, 15, 19, 23, 27, 31, 35]
+
+    for i, cluster_id in enumerate(sorted(df['Cluster'].unique())):
+        ax = axes[i]
+        cluster_df = df[df['Cluster'] == cluster_id][time_cols]
+
+        counts = cluster_df.apply(lambda col: col.value_counts()).fillna(0)
+        counts = counts.reindex(states_to_plot).fillna(0)
+        
+        total_counts = counts.sum(axis=0)
+        perc = counts.div(total_counts.replace(0, 1), axis=1) * 100
+
+        ax.stackplot(
+            perc.columns,
+            perc.values,
+            labels=[STATES_LABELS[s] for s in states_to_plot],
+            colors=colors,
+            alpha=1.0
+        )
+
+        ax.set_title(f'{cluster_id} (n = {len(cluster_df)})', loc='right', fontsize=15, pad=6)
+        ax.set_xlabel('Time', fontsize=12, labelpad=6)
+        
+        if i % n_cols == 0:
+            ax.set_ylabel('State Distribution (%)', fontsize=12, labelpad=6)
+        
+        ax.set_ylim(0, 100)
+        ax.set_yticks([0, 20, 40, 60, 80, 100])
+        
+        # Imposta solo i numeri desiderati sull'asse X
+        ax.set_xticks(time_ticks)
+        
+        ax.tick_params(axis='both', labelsize=9.5, colors='#666666')
+        ax.margins(x=0)
+
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['left'].set_color('#cccccc')
+        ax.spines['bottom'].set_color('#cccccc')
+
+    for j in range(i + 1, len(axes)):
+        axes[j].set_visible(False)
+
+    handles, labels_leg = axes[0].get_legend_handles_labels()
+
+    n_rows = 2
+    legend_cols = (len(handles) + n_rows - 1) // n_rows
+
+    fig.legend(
+        handles,
+        labels_leg,
+        loc='upper center',
+        bbox_to_anchor=(0.5, 0.07),
+        ncol=legend_cols,
+        frameon=False,
+        fontsize=15,
+        handletextpad=0.5,
+        columnspacing=1.8,
+        handlelength=1.4,
+        handleheight=0.9
+    )
+
+    plt.subplots_adjust(left=0.05, right=0.98, top=0.94, bottom=0.15, wspace=0.18, hspace=0.35)
+
+    plt.savefig(
+        FOLDER / f'state_distribution_by_cluster_{DISTANCE_METRIC}_{LINKAGE}_{NUM_CLUSTERS}.png',
+        dpi=300,
+        bbox_inches='tight'
+    )
+
+
+
+
     # 1). STATE DISTRIBUTION PLOT BY CLUSTER (STACKED AREA PLOT) WITHOUT NO STATE
     state_to_color = dict(zip(STATES_LABELS.keys(), CUSTOM_COLORS))
     states_to_plot = [s for s in STATES_LABELS.keys() if s != 'NO']
@@ -1222,7 +1377,7 @@ def clustering_analysis(df_sequence,cluster_labels,distance_matrix):
             colors=colors,
             alpha=0.95,
         )
-        ax.set_title(f'Cluster {cluster_id} (n={len(cluster_df)})')
+        ax.set_title(f'Cluster {cluster_id} (n={len(cluster_df)})', fontsize=14)
         ax.set_xlabel('Time')
         ax.set_ylabel('State distribution (%)')
         ax.set_ylim(0, 100)
@@ -1301,7 +1456,6 @@ def clustering_analysis(df_sequence,cluster_labels,distance_matrix):
 
     #4). SEQUENCE INDEX PLOT BY CLUSTER, but keep only the 20 sequences closer to the medoid of each cluster using the distance 
     #matrix in input 
-    import matplotlib.patches as mpatches
     # Find medoid of each cluster and select 20 closest sequences to it
     n_closest = 100
     state_to_color = dict(zip(STATES_LABELS.keys(), CUSTOM_COLORS))
@@ -1376,7 +1530,7 @@ def clustering_analysis(df_sequence,cluster_labels,distance_matrix):
     plt.savefig(FOLDER / f'top{n_closest}_index_plot_{DISTANCE_METRIC}_{NUM_CLUSTERS}.png', dpi=300, bbox_inches='tight')
 
 
-    # SEQUENCE INDEX PLOT BY CLUSTERbut for each cluster select 30 random sequences and plot them in the sequence index plot
+    # SEQUENCE INDEX PLOT BY CLUSTER but for each cluster select 30 random sequences and plot them in the sequence index plot
     n_samples = 30
     random_seed = 42
     state_to_color = dict(zip(STATES_LABELS.keys(), CUSTOM_COLORS))
@@ -1523,7 +1677,7 @@ def clustering_analysis(df_sequence,cluster_labels,distance_matrix):
     plt.savefig(FOLDER / f'top{n_closest}_index_plot_{DISTANCE_METRIC}_{NUM_CLUSTERS}.png', dpi=300, bbox_inches='tight')
 
 
-    # SEQUENCE INDEX PLOT BY CLUSTER but for each cluster select 30 random sequences and plot them in the sequence index plot
+    # SEQUENCE INDEX PLOT BY CLUSTER but for each cluster select 10 random sequences and plot them in the sequence index plot
     n_samples = 10
     random_seed = 42
     state_to_color = dict(zip(STATES_LABELS.keys(), CUSTOM_COLORS))
@@ -1598,218 +1752,421 @@ def clustering_analysis(df_sequence,cluster_labels,distance_matrix):
 
         
 
-    #5). STATE DISTRIBUTION PLOT ACROSS CHANNELS BY CLUSTER (STACKED AREA PLOT)
+   
 
-    # ── Carica dati e configura per ogni channel ──────────────────────────────────
+# 5). STATE DISTRIBUTION PLOT ACROSS CHANNELS BY CLUSTER (STACKED AREA PLOT)
+
+    # ── Load data and configure for each channel ──────────────────────────────────
     channel_configs = []
     for i in range(NUM_CHANNELS):
-        seq_name     = [SEQUENCE_NAME_0,   SEQUENCE_NAME_1, SEQUENCE_NAME_2,   SEQUENCE_NAME_3][i]
-        states_labels = [STATES_LABELS, STATES_LABELS_1, STATES_LABELS_2, STATES_LABELS_3][i]
-        colors        = [CUSTOM_COLORS, CUSTOM_COLORS_1, CUSTOM_COLORS_2, CUSTOM_COLORS_3][i]
-        csv_path      = ROOT / 'SSA' / 'datasets' / f'{seq_name}.csv'
+        seq_name = [
+            SEQUENCE_NAME_0,
+            SEQUENCE_NAME_1,
+            SEQUENCE_NAME_2,
+            SEQUENCE_NAME_3,
+        ][i]
+        states_labels = [
+            STATES_LABELS,
+            STATES_LABELS_1,
+            STATES_LABELS_2,
+            STATES_LABELS_3,
+        ][i]
+        colors = [CUSTOM_COLORS, CUSTOM_COLORS_1, CUSTOM_COLORS_2, CUSTOM_COLORS_3][
+            i
+        ]
+        csv_path = ROOT / 'SSA' / 'datasets' / f'{seq_name}.csv'
         if not csv_path.exists():
-            print(f"[WARNING] Channel {i}: file not found ({csv_path}), skipping.")
+            print(f'[WARNING] Channel {i}: file not found ({csv_path}), skipping.')
             continue
         channel_configs.append({
-            'df':            pd.read_csv(csv_path),
-            'states_all':    list(states_labels.keys()),
+            'df': pd.read_csv(csv_path),
+            'states_all': list(states_labels.keys()),
             'states_labels': states_labels,
-            'colors':        colors,
+            'colors': colors,
         })
 
-    # Pre-calcola time_cols per ogni channel
+    # Pre-calculate time_cols for each channel
     for ch_idx, cfg in enumerate(channel_configs):
         cfg['time_cols'] = [c for c in cfg['df'].columns if c.isdigit()]
         cfg['colors_all'] = [
-            dict(zip(cfg['states_all'], cfg['colors']))[s]
-            for s in cfg['states_all']
+            dict(zip(cfg['states_all'], cfg['colors']))[s] for s in cfg['states_all']
         ]
 
     # ── Layout ────────────────────────────────────────────────────────────────────
-    cluster_ids  = sorted(df['Cluster'].unique())
-    n_clusters   = len(cluster_ids)
-    n_cols       = 3
-    n_block_rows = (n_clusters + n_cols - 1) // n_cols
-    n_grid_rows  = n_block_rows * NUM_CHANNELS  # NUM_CHANNELS righe per cluster block
+    cluster_ids = sorted(df['Cluster'].unique())
+    n_clusters = len(cluster_ids)
+    n_rows = n_clusters
+    n_cols = len(channel_configs)  # One column per channel
 
-    fig, axes = plt.subplots(n_grid_rows, n_cols, figsize=(6 * n_cols, 4 * n_grid_rows))
-    axes = axes.flatten()
+    # squeeze=False guarantees 2D array indexing: axes[row, col]
+    fig, axes = plt.subplots(
+        n_rows, n_cols, figsize=(6 * n_cols, 4 * n_rows), squeeze=False
+    )
 
-    for idx, cluster_id in enumerate(cluster_ids):
-        col_pos   = idx % n_cols
-        block_row = idx // n_cols
-        base      = block_row * n_cols * NUM_CHANNELS
-
+    for row_idx, cluster_id in enumerate(cluster_ids):
         patient_ids = df[df['Cluster'] == cluster_id][COL_ID]
+        n_patients = len(patient_ids)
 
         for ch_idx, cfg in enumerate(channel_configs):
-            ax = axes[base + n_cols * ch_idx + col_pos]
+            ax = axes[row_idx, ch_idx]
 
-            # Filtra per cluster: ch0 usa df direttamente, gli altri filtrano per patient_ids
+            # Filter by cluster: ch0 uses df directly, others filter by patient_ids
             if ch_idx == 0:
                 cluster_df = df[df['Cluster'] == cluster_id][cfg['time_cols']]
             else:
-                cluster_df = cfg['df'][cfg['df'][COL_ID].isin(patient_ids)][cfg['time_cols']]
+                cluster_df = cfg['df'][cfg['df'][COL_ID].isin(patient_ids)][
+                    cfg['time_cols']
+                ]
 
             counts = cluster_df.apply(lambda col: col.value_counts()).fillna(0)
             counts = counts.reindex(cfg['states_all']).fillna(0)
-            perc   = counts.div(counts.sum(axis=0), axis=1) * 100
+            perc = counts.div(counts.sum(axis=0), axis=1) * 100
 
             ax.stackplot(
-                perc.columns, perc.values,
+                perc.columns,
+                perc.values,
                 labels=[cfg['states_labels'][s] for s in cfg['states_all']],
                 colors=cfg['colors_all'],
                 alpha=0.95,
             )
 
-            title_suffix = f'(n={len(cluster_df)}) — Ch.{ch_idx}' if ch_idx == 0 else f'— Ch.{ch_idx}'
-            ax.set_title(f'Cluster {cluster_id} {title_suffix}')
-            ax.set_ylabel('State (%)')
+            title_suffix = (
+                f'(Ch.{ch_idx+1})'
+                if ch_idx == 0
+                else f'Ch.{ch_idx+1}'
+            )
+            ax.set_title(f'Cluster {cluster_id} (N={n_patients:,}) - {title_suffix}', fontsize=14)
+            ax.set_ylabel('State (%)', fontsize=13)
             ax.set_ylim(0, 100)
             ax.margins(x=0)
+            ax.tick_params(axis='y', labelsize=13)
 
-            # xlabel solo sull'ultimo channel
-            if ch_idx == NUM_CHANNELS - 1:
-                ax.set_xlabel('Time')
+            # Gestione asse X: solo sull'ultima riga con valori distanziati (0, 3, 7, 11... 35)
+            if row_idx == n_rows - 1:
+                ax.set_xlabel('Time', fontsize=13)
+                cols = list(perc.columns)
+                # Seleziona 0, poi a passi di 4 a partire da 3, più l'ultimo elemento
+                selected_ticks = [cols[0]] + [
+                    c for idx, c in enumerate(cols) if idx >= 3 and (idx - 3) % 4 == 0
+                ]
+                if cols[-1] not in selected_ticks:
+                    selected_ticks.append(cols[-1])
+                
+                ax.set_xticks(selected_ticks)
+                ax.set_xticklabels(selected_ticks, fontsize=13)
+            else:
+                ax.set_xticks([])
 
-    # ── Legends ───────────────────────────────────────────────────────────────────
+    # ── Legends (Compatte) ────────────────────────────────────────────────────────
     for ch_idx, cfg in enumerate(channel_configs):
-        handles, labels = axes[n_cols * ch_idx].get_legend_handles_labels()
-        y_offset = -0.02 - ch_idx * 0.03
+        handles, labels = axes[0, ch_idx].get_legend_handles_labels()
+        
+        y_offset = -0.015 - ch_idx * 0.022
+        
         fig.legend(
-            handles, labels,
+            handles,
+            labels,
             loc='lower center',
             ncol=len(cfg['states_all']),
             bbox_to_anchor=(0.5, y_offset),
             frameon=False,
-            title=f'Ch.{ch_idx}',
+            fontsize=13,
+            title=f'Ch.{ch_idx+1}:',
+            title_fontsize=13,
+            columnspacing=0.8,
+            handletextpad=0.3,
+            handlelength=1.0,
         )
 
-    # ── Nascondi subplot vuoti ─────────────────────────────────────────────────────
-    for block_row in range(n_block_rows):
-        for col_pos in range(n_cols):
-            flat_idx = block_row * n_cols + col_pos
-            if flat_idx >= n_clusters:
-                base = block_row * n_cols * NUM_CHANNELS
-                for ch_idx in range(NUM_CHANNELS):
-                    axes[base + ch_idx * n_cols + col_pos].set_visible(False)
-
-    fig.suptitle(
-        f'State distribution per cluster — {NUM_CHANNELS} channel(s)',
-        fontsize=16,
-    )
     plt.tight_layout()
     plt.savefig(
-        ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME / CLUSTERING / DISTANCE_METRIC /
-        f'cluster_state_distribution_{NUM_CHANNELS}ch_{DISTANCE_METRIC}_{NUM_CLUSTERS}.png',
-        dpi=300, bbox_inches='tight',
+        ROOT_FOLDER_CLUSTERING
+        / SEQUENCE_NAME
+        / CLUSTERING
+        / DISTANCE_METRIC
+        / f'cluster_state_distribution_{n_cols}ch_{DISTANCE_METRIC}_{NUM_CLUSTERS}.png',
+        dpi=300,
+        bbox_inches='tight',
     )
 
 
-    #6). SEQUENCE INDEX PLOT ACROSS CHANNELS BY CLUSTER
-    import matplotlib.patches as mpatches
-    import matplotlib.colors as mcolors
-
+    # 6). SEQUENCE INDEX PLOT ACROSS CHANNELS BY CLUSTER
     def plot_index(ax, seq_df, color_map, states_order, title, xlabel=False):
         seq_sorted = seq_df
         state_to_int = {s: i for i, s in enumerate(states_order)}
-        mat = seq_sorted.apply(lambda row: row.map(state_to_int)).fillna(0).values.astype(int)
-        colors_ordered = [color_map.get(s, '#CCCCCC') for s in states_order]
+        mat = (
+            seq_sorted.apply(lambda row: row.map(state_to_int))
+            .fillna(0)
+            .values.astype(int)
+        )
+        colors_ordered = [color_map.get(s, "#CCCCCC") for s in states_order]
         cmap = mcolors.ListedColormap(colors_ordered)
         bounds = np.arange(-0.5, len(states_order), 1)
         norm = mcolors.BoundaryNorm(bounds, cmap.N)
-        ax.imshow(mat, aspect='auto', cmap=cmap, norm=norm, interpolation='none', origin='upper')
+        ax.imshow(
+            mat,
+            aspect="auto",
+            cmap=cmap,
+            norm=norm,
+            interpolation="none",
+            origin="upper",
+        )
         ax.set_title(title)
-        ax.set_ylabel('Sequences')
+        ax.set_ylabel("Sequences")
         ax.set_yticks([])
         if xlabel:
-            ax.set_xlabel('Time')
+            ax.set_xlabel("Time")
+
 
     def make_legend_patches(states_labels, color_map):
-        return [mpatches.Patch(color=color_map[s], label=states_labels[s])
-                for s in states_labels.keys()]
+        return [
+            mpatches.Patch(color=color_map[s], label=states_labels[s])
+            for s in states_labels.keys()
+        ]
+
 
     # ── Configure channels ────────────────────────────────────────────────────────
     channel_configs = []
     for i in range(NUM_CHANNELS):
-        seq_name     = [SEQUENCE_NAME_0,   SEQUENCE_NAME_1, SEQUENCE_NAME_2,   SEQUENCE_NAME_3][i]
-        states_labels = [STATES_LABELS, STATES_LABELS_1, STATES_LABELS_2, STATES_LABELS_3][i]
-        colors        = [CUSTOM_COLORS, CUSTOM_COLORS_1, CUSTOM_COLORS_2, CUSTOM_COLORS_3][i]
-        csv_path      = ROOT / 'SSA' / 'datasets' / f'{seq_name}.csv'
+        seq_name = [
+            SEQUENCE_NAME_0,
+            SEQUENCE_NAME_1,
+            SEQUENCE_NAME_2,
+            SEQUENCE_NAME_3,
+        ][i]
+        states_labels = [
+            STATES_LABELS,
+            STATES_LABELS_1,
+            STATES_LABELS_2,
+            STATES_LABELS_3,
+        ][i]
+        colors = [
+            CUSTOM_COLORS,
+            CUSTOM_COLORS_1,
+            CUSTOM_COLORS_2,
+            CUSTOM_COLORS_3,
+        ][i]
+        csv_path = ROOT / "SSA" / "datasets" / f"{seq_name}.csv"
         if not csv_path.exists():
             print(f"[WARNING] Channel {i}: file not found ({csv_path}), skipping.")
             continue
         channel_configs.append({
-            'df':            pd.read_csv(csv_path),
-            'states_all':    list(states_labels.keys()),
-            'states_labels': states_labels,
-            'colors':        colors,
+            "df": pd.read_csv(csv_path),
+            "states_all": list(states_labels.keys()),
+            "states_labels": states_labels,
+            "colors": colors,
         })
 
     # Pre-compute time_cols and color_map for each channel
     for cfg in channel_configs:
-        cfg['time_cols'] = [c for c in cfg['df'].columns if c.isdigit()]
-        cfg['color_map'] = dict(zip(cfg['states_all'], cfg['colors']))
+        cfg["time_cols"] = [c for c in cfg["df"].columns if c.isdigit()]
+        cfg["color_map"] = dict(zip(cfg["states_all"], cfg["colors"]))
 
     # ── Layout ────────────────────────────────────────────────────────────────────
-    cluster_ids  = sorted(df['Cluster'].unique())
-    n_clusters   = len(cluster_ids)
-    n_cols       = 3
-    n_block_rows = (n_clusters + n_cols - 1) // n_cols
-    n_grid_rows  = n_block_rows * NUM_CHANNELS
+    cluster_ids = sorted(df["Cluster"].unique())
+    n_clusters = len(cluster_ids)
+    n_rows = n_clusters
+    n_cols = len(channel_configs)  # One column per channel
 
-    fig, axes = plt.subplots(n_grid_rows, n_cols, figsize=(6 * n_cols, 5 * n_grid_rows))
-    axes = axes.flatten()
+    # squeeze=False ensures 2D indexing: axes[row, col]
+    fig, axes = plt.subplots(
+        n_rows, n_cols, figsize=(6 * n_cols, 4 * n_rows), squeeze=False
+    )
 
-    for idx, cluster_id in enumerate(cluster_ids):
-        col_pos   = idx % n_cols
-        block_row = idx // n_cols
-        base      = block_row * n_cols * NUM_CHANNELS
-
-        patient_ids = df[df['Cluster'] == cluster_id][COL_ID]
+    for row_idx, cluster_id in enumerate(cluster_ids):
+        patient_ids = df[df["Cluster"] == cluster_id][COL_ID]
         n = len(patient_ids)
 
         for ch_idx, cfg in enumerate(channel_configs):
-            ax = axes[base + n_cols * ch_idx + col_pos]
+            ax = axes[row_idx, ch_idx]
 
-            seq_df = cfg['df'][cfg['df'][COL_ID].isin(patient_ids)][cfg['time_cols']].reset_index(drop=True)
+            seq_df = (
+                cfg["df"][cfg["df"][COL_ID].isin(patient_ids)][cfg["time_cols"]]
+                .reset_index(drop=True)
+            )
 
-            title_suffix = f'(n={n}) — Ch.{ch_idx}' if ch_idx == 0 else f'— Ch.{ch_idx}'
-            is_last = (ch_idx == NUM_CHANNELS - 1)
+            title_suffix = (
+                f"Ch.{ch_idx+1}" if ch_idx == 0 else f" Ch.{ch_idx+1}"
+            )
+            is_bottom_row = row_idx == n_rows - 1
 
-            plot_index(ax, seq_df, cfg['color_map'], cfg['states_all'],
-                       f'Cluster {cluster_id} {title_suffix}', xlabel=is_last)
+            plot_index(
+                ax,
+                seq_df,
+                cfg["color_map"],
+                cfg["states_all"],
+                f"Cluster {cluster_id}-{title_suffix}",
+                xlabel=is_bottom_row,
+            )
 
     # ── Legends ───────────────────────────────────────────────────────────────────
     for ch_idx, cfg in enumerate(channel_configs):
         y_offset = -0.02 - ch_idx * 0.03
         fig.legend(
-            handles=make_legend_patches(cfg['states_labels'], cfg['color_map']),
-            loc='lower center',
-            ncol=len(cfg['states_all']),
+            handles=make_legend_patches(cfg["states_labels"], cfg["color_map"]),
+            loc="lower center",
+            ncol=len(cfg["states_all"]),
             bbox_to_anchor=(0.5, y_offset),
             frameon=False,
-            title=f'Ch.{ch_idx}',
+            title=f"Ch.{ch_idx+1}",
         )
 
-    # ── Hide empty subplots ───────────────────────────────────────────────────────
-    for block_row in range(n_block_rows):
-        for col_pos in range(n_cols):
-            flat_idx = block_row * n_cols + col_pos
-            if flat_idx >= n_clusters:
-                base = block_row * n_cols * NUM_CHANNELS
-                for ch_idx in range(NUM_CHANNELS):
-                    axes[base + ch_idx * n_cols + col_pos].set_visible(False)
-
-    fig.suptitle(
-        f'Sequence index plot per cluster — {NUM_CHANNELS} channel(s)',
-        fontsize=16,
-    )
     plt.tight_layout()
     plt.savefig(
-        ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME / CLUSTERING / DISTANCE_METRIC /
-        f'index_plot_{NUM_CHANNELS}ch_{DISTANCE_METRIC}_{NUM_CLUSTERS}.png',
-        dpi=300, bbox_inches='tight',
+        ROOT_FOLDER_CLUSTERING
+        / SEQUENCE_NAME
+        / CLUSTERING
+        / DISTANCE_METRIC
+        / f"index_plot_{n_cols}ch_{DISTANCE_METRIC}_{NUM_CLUSTERS}.png",
+        dpi=300,
+        bbox_inches="tight",
+    )
+
+    # 6). SEQUENCE INDEX PLOT ACROSS CHANNELS BY CLUSTER (RANDOM SUBSET)
+
+    SUBSET_SIZE = 30
+    RANDOM_STATE = 42
+
+
+    def plot_index(ax, seq_df, color_map, states_order, title, xlabel=False):
+        seq_sorted = seq_df
+        state_to_int = {s: i for i, s in enumerate(states_order)}
+        mat = (
+            seq_sorted.apply(lambda row: row.map(state_to_int))
+            .fillna(0)
+            .values.astype(int)
+        )
+        colors_ordered = [color_map.get(s, "#CCCCCC") for s in states_order]
+        cmap = mcolors.ListedColormap(colors_ordered)
+        bounds = np.arange(-0.5, len(states_order), 1)
+        norm = mcolors.BoundaryNorm(bounds, cmap.N)
+        ax.imshow(
+            mat,
+            aspect="auto",
+            cmap=cmap,
+            norm=norm,
+            interpolation="none",
+            origin="upper",
+        )
+        ax.set_title(title)
+        ax.set_ylabel("Sequences")
+        ax.set_yticks([])
+        if xlabel:
+            ax.set_xlabel("Time")
+
+
+    def make_legend_patches(states_labels, color_map):
+        return [
+            mpatches.Patch(color=color_map[s], label=states_labels[s])
+            for s in states_labels.keys()
+        ]
+
+
+    # ── Configure channels ────────────────────────────────────────────────────────
+    channel_configs = []
+    for i in range(NUM_CHANNELS):
+        seq_name = [
+            SEQUENCE_NAME_0,
+            SEQUENCE_NAME_1,
+            SEQUENCE_NAME_2,
+            SEQUENCE_NAME_3,
+        ][i]
+        states_labels = [
+            STATES_LABELS,
+            STATES_LABELS_1,
+            STATES_LABELS_2,
+            STATES_LABELS_3,
+        ][i]
+        colors = [
+            CUSTOM_COLORS,
+            CUSTOM_COLORS_1,
+            CUSTOM_COLORS_2,
+            CUSTOM_COLORS_3,
+        ][i]
+        csv_path = ROOT / "SSA" / "datasets" / f"{seq_name}.csv"
+        if not csv_path.exists():
+            print(f"[WARNING] Channel {i}: file not found ({csv_path}), skipping.")
+            continue
+        channel_configs.append({
+            "df": pd.read_csv(csv_path),
+            "states_all": list(states_labels.keys()),
+            "states_labels": states_labels,
+            "colors": colors,
+        })
+
+    # Pre-compute time_cols and color_map for each channel
+    for cfg in channel_configs:
+        cfg["time_cols"] = [c for c in cfg["df"].columns if c.isdigit()]
+        cfg["color_map"] = dict(zip(cfg["states_all"], cfg["colors"]))
+
+    # ── Layout ────────────────────────────────────────────────────────────────────
+    cluster_ids = sorted(df["Cluster"].unique())
+    n_clusters = len(cluster_ids)
+    n_rows = n_clusters
+    n_cols = len(channel_configs)  # One column per channel
+
+    fig, axes = plt.subplots(
+        n_rows, n_cols, figsize=(6 * n_cols, 4 * n_rows), squeeze=False
+    )
+
+    for row_idx, cluster_id in enumerate(cluster_ids):
+        patient_ids = df[df["Cluster"] == cluster_id][COL_ID]
+        total_n = len(patient_ids)
+
+        # Sample a random subset of patients for this cluster
+        sampled_ids = (
+            patient_ids.sample(n=min(SUBSET_SIZE, total_n), random_state=RANDOM_STATE)
+        )
+        shown_n = len(sampled_ids)
+
+        for ch_idx, cfg in enumerate(channel_configs):
+            ax = axes[row_idx, ch_idx]
+
+            # Use the exact same sampled patient IDs across all channels in fixed order
+            ch_df = cfg["df"].set_index(COL_ID)
+            seq_df = (
+                ch_df.loc[ch_df.index.intersection(sampled_ids), cfg["time_cols"]]
+                .reindex(sampled_ids)
+                .reset_index(drop=True)
+            )
+
+            title_suffix = (
+                f"Ch.{ch_idx+1}"
+                if ch_idx == 0
+                else f"Ch.{ch_idx+1}"
+            )
+            is_bottom_row = row_idx == n_rows - 1
+
+            plot_index(
+                ax,
+                seq_df,
+                cfg["color_map"],
+                cfg["states_all"],
+                f"Cluster {cluster_id}-{title_suffix}",
+                xlabel=is_bottom_row,
+            )
+
+    # ── Legends ───────────────────────────────────────────────────────────────────
+    for ch_idx, cfg in enumerate(channel_configs):
+        y_offset = -0.02 - ch_idx * 0.03
+        fig.legend(
+            handles=make_legend_patches(cfg["states_labels"], cfg["color_map"]),
+            loc="lower center",
+            ncol=len(cfg["states_all"]),
+            bbox_to_anchor=(0.5, y_offset),
+            frameon=False,
+            title=f"Ch.{ch_idx+1}",
+        )
+
+    plt.tight_layout()
+    plt.savefig(
+        ROOT_FOLDER_CLUSTERING
+        / SEQUENCE_NAME
+        / CLUSTERING
+        / DISTANCE_METRIC
+        / f"index_plot_sample{SUBSET_SIZE}_{n_cols}ch_{DISTANCE_METRIC}_{NUM_CLUSTERS}.png",
+        dpi=300,
+        bbox_inches="tight",
     )
 
     #7). HEATMAP WITH MEAN TIME (%) SPENT IN EACH STATE PER PATIENT, AVERAGED BY CLUSTER
@@ -1883,6 +2240,47 @@ def cluster_summary_table(df_sequence, cluster_labels ):
             lambda row: (row != 'NO').sum(), axis=1
         ).mean()
 
+        #--- SD of number of non-NO states per sequence ---
+        sd_non_no = cluster_df.apply(
+            lambda row: (row != 'NO').sum(), axis=1
+        ).std()
+
+        #--- % of NO time points respect total time points per sequence ---
+        mean_no_percentage = cluster_df.apply(
+            lambda row: (row == 'NO').sum() / len(row) * 100, axis=1
+        ).mean()
+
+        #--- Mean number of transitions per sequence ---
+        mean_transitions = cluster_df.apply(
+            lambda row: (row != row.shift()).sum() - 1, axis=1
+        ).mean()
+
+        #--- Mean entropy of the sequences in the cluster ---
+        def entropy(row, alphabet_size=len(STATES_LABELS), norm=True):
+            # Compute relative frequencies p_a for observed states only
+            vc = row.value_counts(normalize=True)
+            p = vc[vc > 0].values
+
+            # Shannon entropy using the natural logarithm (as in TraMineR)
+            h = -np.sum(p * np.log(p))
+
+            # Normalize to [0, 1]
+            if norm and alphabet_size > 1:
+                h = h / np.log(alphabet_size)
+
+            return h
+        mean_entropy = cluster_df.apply(entropy, axis=1).mean()
+        sd_entropy = cluster_df.apply(entropy, axis=1).std()
+
+        #--- Mean couunts of each state per sequence ---
+        def patient_counts(row):
+            vc = row.value_counts()
+            return pd.Series({s: vc.get(s, 0) for s in all_states})
+
+        mean_counts = cluster_df.apply(patient_counts, axis=1).mean()
+
+
+
         # --- Mean time points spent in each state per sequence ---
         def patient_time(row):
             vc = row.value_counts()
@@ -1891,20 +2289,90 @@ def cluster_summary_table(df_sequence, cluster_labels ):
         mean_time = cluster_df.apply(patient_time, axis=1).mean()
 
         
+
         # --- Assemble row ---
-        row = {'Cluster': cluster_id, 'N sequences': n_seq, 'Mean non-NO states': round(mean_non_no, 2)}
-        for s in all_states:
-            row[f'mean t {STATES_LABELS[s]}'] = round(mean_time[s], 1)
-    
+        row = {'Cluster': cluster_id, 'N sequences': n_seq, 'Mean non-NO states': round(mean_non_no, 3),'SD of non-NO states': round(sd_non_no, 3), 'Mean entropy': round(mean_entropy, 3), 'SD entropy':round(sd_entropy, 3), 'Mean transitions': round(mean_transitions, 3), 'Mean % NO time points': round(mean_no_percentage, 3)}
+
+        #--- Percentage of sequences with at least one occurrence of each state ---
         for s in all_states:
             has_state = (cluster_df == s).any(axis=1).mean() * 100
             row[f'seq with {STATES_LABELS[s]}'] = round(has_state, 1)
+
+        #--- Mean counts of each state per sequence ---
+        for s in all_states:
+            row[f'mean c {STATES_LABELS[s]}'] = round(mean_counts[s], 1)
+        #--- Mean time points spent in each state per sequence ---
+        for s in all_states:
+            row[f'mean t {STATES_LABELS[s]}'] = round(mean_time[s], 1)
 
         rows.append(row)
 
     summary = pd.DataFrame(rows).set_index('Cluster').T
 
     # --- Save LaTeX ---
-    summary.to_latex(ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME / CLUSTERING / DISTANCE_METRIC / f'cluster_summary_{DISTANCE_METRIC}_{NUM_CLUSTERS}.tex', index=True, float_format="%.1f")
+    summary.to_latex(ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME / CLUSTERING / DISTANCE_METRIC / f'cluster_summary_{DISTANCE_METRIC}_{NUM_CLUSTERS}.tex', index=True)
+
+    return summary
+
+
+def descriptive_stats_table(df, cluster_labels):
+    """Compute descriptive statistics (counts and percentages) for baseline
+
+    covariates across the entire cohort and within each trajectory cluster.
+    Exports the resulting table directly to LaTeX.
+    """
+    # 1. Merge sequence covariates with cluster labels
+    df_cluster = df.merge(
+        cluster_labels, left_on="pedianet_id", right_on="Entity ID", how="inner"
+    )
+
+    # Extract intake/enrollment year from datan
+    df_cluster["enrollment_year"] = pd.to_datetime(
+        df_cluster["datan"], errors="coerce"
+    ).dt.year
+
+    # Variables to analyze dynamically
+    vars_to_analyze = ["sesso", "adi", "enrollment_year"]
+    clusters = sorted(df_cluster["Cluster"].unique())
+
+    # 2. Compute dynamic counts and percentages
+    rows = []
+    tot_all = len(df_cluster)
+
+    for var in vars_to_analyze:
+        unique_categories = sorted(df_cluster[var].dropna().unique())
+
+        for cat in unique_categories:
+            row = {"Variable": var, "Category": str(cat)}
+
+            # Overall cohort distribution (All)
+            n_all = (df_cluster[var] == cat).sum()
+            pct_all = (n_all / tot_all * 100) if tot_all > 0 else 0.0
+            row["All"] = f"{n_all} ({pct_all:.1f}%)"
+
+            # Within-cluster distributions
+            for c in clusters:
+                c_df = df_cluster[df_cluster["Cluster"] == c]
+                tot_c = len(c_df)
+                n_c = (c_df[var] == cat).sum()
+                pct_c = (n_c / tot_c * 100) if tot_c > 0 else 0.0
+                row[f"C{c}"] = f"{n_c} ({pct_c:.1f}%)"
+
+            rows.append(row)
+
+    # 3. Create formatted DataFrame
+    summary = pd.DataFrame(rows).set_index(["Variable", "Category"])
+
+    # 4. Print and save LaTeX table
+    print(summary)
+
+    output_path = (
+        ROOT_FOLDER_CLUSTERING
+        / SEQUENCE_NAME
+        / CLUSTERING
+        / DISTANCE_METRIC
+        / f"baseline_stats_{DISTANCE_METRIC}_{NUM_CLUSTERS}.tex"
+    )
+    summary.to_latex(output_path, index=True)
 
     return summary

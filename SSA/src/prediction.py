@@ -7,7 +7,7 @@ ROOT=Path(__file__).parent.parent.parent
 CLUSTERING_FOLDER=ROOT/'SSA'/'results'/'sequences'/'sequence_clustering'
 CHAR_FOLDER=ROOT/'SSA'/'results'/'sequences'/'sequence_characteristics'
 PRED_FOLDER=ROOT/'SSA'/'prediction'
-from config import SEQUENCE_NAME, DISTANCE_METRIC, CLUSTERING,LINKAGE,NUM_CLUSTERS,YEARS,SEASON,SEQ_LENGTH,STATES_LABELS
+from config import SEQUENCE_NAME, DISTANCE_METRIC, CLUSTERING,LINKAGE,NUM_CLUSTERS,YEARS,SEASON,SEQ_LENGTH,STATES_LABELS, NUM_CHANNELS, TIME_UNIT
 
 def run_prediction():
     """
@@ -16,13 +16,16 @@ def run_prediction():
     """
 
     ########### SET UP ###########
-    PRED_NAME='target_obs_drugs' #name of the prediction task: 'target_lrti' or 'target_obs_drugs' or 'target_obesity' or 'target_BMI'
+    FLAG=True #flag to use multichannel clusters instead of single channel partitions 
+    PRED_NAME='target_lrti' #name of the prediction task: 'target_lrti' or 'target_obs_drugs' or 'target_obesity' or 'target_BMI'
     #possible features are: 'sex','age','cluster','entropy','turbulence','num_transitions','adi','num_subsequences','complexity','variance_of_spell','count', 'months_last_event','last_year_events'
-    FEATURES=['sex','age','cluster','entropy','num_transitions','complexity','turbulence','last_year_events','months_last_event','count'] #features to use for prediction
-    CAT_FEATURES=['sex','cluster'] #categorical features to use for prediction
+    FEATURES=['age','sex','adi','cluster','entropy','num_transitions','variance_of_spell','complexity','turbulence','months_last_event'] #features to use for prediction
+    CAT_FEATURES=['sex','cluster','adi'] #categorical features to use for prediction
     MODEL='cox_regression' #model to use for prediction: 'logistic_regression' or 'cox_regression' or 'lasso_regression' or 'cox_time_varying' or cox_strata_entropy' or 'cox_time_varying_strata' or 'cox_strata_cluster'
     STRATA='last_year_events' #stratification variable
-    (PRED_FOLDER/PRED_NAME).mkdir(parents=True, exist_ok=True)
+    PRED_FOLDER_RESULTS=ROOT/'SSA'/'prediction'/PRED_NAME/SEQUENCE_NAME/DISTANCE_METRIC
+    (PRED_FOLDER_RESULTS).mkdir(parents=True, exist_ok=True)
+
 
     if SEASON==True:
         #load patients included in the sequence analysis and select only those included in the prediction dataset
@@ -89,9 +92,9 @@ def run_prediction():
             if len(selected_drug)>=2:
                 count_patient+=1
                 target_patients.loc[patient['pedianet_id'],'target']=1
-                first_drug_date=selected_drug['dataricetta'].min()
+                second_drug_date=selected_drug['dataricetta'].iloc[1]
                 selected_drug=selected_drug.sort_values(by='dataricetta')
-                delta_days = (pd.to_datetime(first_drug_date) - pd.to_datetime(patient['end_date'])).days
+                delta_days = (pd.to_datetime(second_drug_date) - pd.to_datetime(patient['end_date'])).days
                 months_val = round(delta_days / 30.4375, 2)
                 # max(0.1, ...) preventing crashes
                 target_patients.loc[patient['pedianet_id'], 'months'] = max(0.1, months_val)
@@ -169,7 +172,11 @@ def run_prediction():
     features['adi']=patients_pred['adi']
 
     ## - cluster labels
-    cluster_labels=pd.read_csv(CLUSTERING_FOLDER/SEQUENCE_NAME/CLUSTERING/DISTANCE_METRIC/f'cluster_labels_{DISTANCE_METRIC}.csv', index_col='Entity ID')
+    if FLAG==True:
+        # Use multichannel cluster labels
+        cluster_labels = pd.read_csv(CLUSTERING_FOLDER/f'seq_multichannel_{NUM_CHANNELS}_{TIME_UNIT}_{SEQ_LENGTH}'/f'multi_channel_{CLUSTERING}'/DISTANCE_METRIC/f'cluster_labels_{DISTANCE_METRIC}.csv', index_col='Entity ID')
+    else:
+        cluster_labels=pd.read_csv(CLUSTERING_FOLDER/SEQUENCE_NAME/CLUSTERING/DISTANCE_METRIC/f'cluster_labels_{DISTANCE_METRIC}.csv', index_col='Entity ID')
     features['cluster'] = cluster_labels['Cluster'].reindex(features.index)
 
     print('Cluster head:\n', features['cluster'].value_counts())
@@ -246,13 +253,39 @@ def run_prediction():
     numeric_features = [col for col in FEATURES if col not in CAT_FEATURES]
     correlation_matrix = pred_dataset[numeric_features].corr()
     print(f"Correlation matrix:\n{correlation_matrix}") 
+
+    COLOR_START = "#ffffff"  # Light/Neutral color for low/no correlation (e.g., white)
+    COLOR_END = "#649ABF"    # Strong color for high correlation (e.g., steel blue)
+    # Create the custom 2-color gradient palette
+    from matplotlib.colors import LinearSegmentedColormap
+    custom_cmap = LinearSegmentedColormap.from_list("custom_gradient", [COLOR_START, COLOR_END])
+    
     #plot correlation matrix
     import seaborn as sns
-    plt.figure(figsize=(10, 8))
-    sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt='.2f', square=True)
-    plt.title('Correlation Matrix of Numeric Features')
-    plt.savefig(PRED_FOLDER/PRED_NAME/'correlation_matrix.png')
-    plt.show()
+    plt.figure(figsize=(9, 8))
+
+    ax = sns.heatmap(
+        correlation_matrix,
+        annot=True,
+        cmap=custom_cmap,
+        fmt=".2f",
+        square=True,
+        cbar_kws={"shrink": 0.8},
+    )
+
+    plt.title("Correlation Matrix of Numeric Features", pad=15, fontsize=12)
+
+    # Rotate bottom labels by 45 degrees and align right to prevent clipping
+    plt.xticks(rotation=45, ha="right", fontsize=10)
+    plt.yticks(rotation=0, fontsize=10)
+
+    # Adjust padding automatically
+    plt.tight_layout()
+
+    # bbox_inches='tight' ensures all labels fit within the exported image
+    plt.savefig(
+        PRED_FOLDER_RESULTS / "correlation_matrix.png", dpi=300, bbox_inches="tight"
+    )
     #remove highly correlated features (correlation > 0.8)
     highly_correlated_features = set()
     for i in range(len(numeric_features)):
@@ -282,12 +315,17 @@ def run_prediction():
 
     #create dummy variables for categorical features
     pred_dataset[CAT_FEATURES]=pred_dataset[CAT_FEATURES].astype('category')
+    reference_cluster=None
     if 'cluster' in CAT_FEATURES:
-        most_frequent_cluster = pred_dataset['cluster'].value_counts().idxmax()
-        #set the cluster with the highest number of patients as the reference category for dummy variables
-        categories = [most_frequent_cluster] + [c for c in pred_dataset['cluster'].unique() if c != most_frequent_cluster]
-        pred_dataset['cluster'] = pd.Categorical(pred_dataset['cluster'], categories=categories)
-
+        if reference_cluster==None:
+            most_frequent_cluster = pred_dataset['cluster'].value_counts().idxmax()
+            #set the cluster with the highest number of patients as the reference category for dummy variables
+            categories = [most_frequent_cluster] + [c for c in pred_dataset['cluster'].unique() if c != most_frequent_cluster]
+            pred_dataset['cluster'] = pd.Categorical(pred_dataset['cluster'], categories=categories)
+        else:
+            #set the cluster with the highest number of patients as the reference category for dummy variables
+            categories = [reference_cluster] + [c for c in pred_dataset['cluster'].unique() if c != reference_cluster]
+            pred_dataset['cluster'] = pd.Categorical(pred_dataset['cluster'], categories=categories)
 
     pred_dataset = pd.get_dummies(
         pred_dataset,
@@ -343,8 +381,8 @@ def run_prediction():
         plt.yticks(rotation=0)
         plt.tight_layout()
 
-        plt.savefig(PRED_FOLDER / PRED_NAME / 'spearman_correlations_heatmap.png', dpi=300)
-        
+
+        plt.savefig(PRED_FOLDER_RESULTS/ 'spearman_correlations_heatmap.png', dpi=300)
 
     ############ PREDICTION MODEL ############
     if MODEL=='logistic_regression':
@@ -367,7 +405,7 @@ def run_prediction():
         print(confusion_matrix(y_test, y_pred))
         ConfusionMatrixDisplay(confusion_matrix(y_test, y_pred), display_labels=['No', 'Yes']).plot()
         
-        plt.savefig(PRED_FOLDER/PRED_NAME/'confusion_matrix.png')
+        plt.savefig(PRED_FOLDER_RESULTS/'confusion_matrix.png')
         print(f'ROC AUC Score: {roc_auc_score(y_test, y_pred):.3f}')
         print(f"AUPRC: {average_precision_score(y_test, y_pred_proba):.3f}")
 
@@ -396,7 +434,7 @@ def run_prediction():
         print(confusion_matrix(y_test, y_pred))
         ConfusionMatrixDisplay(confusion_matrix(y_test, y_pred), display_labels=['No', 'Yes']).plot()
         
-        plt.savefig(PRED_FOLDER/PRED_NAME/'confusion_matrix_lasso.png')
+        plt.savefig(PRED_FOLDER_RESULTS/'confusion_matrix_lasso.png')
         print(f'ROC AUC Score: {roc_auc_score(y_test, y_pred):.3f}')
         print(f"AUPRC: {average_precision_score(y_test, y_pred_proba):.3f}")
 
@@ -411,7 +449,7 @@ def run_prediction():
         from lifelines.utils import concordance_index
 
         # Fit the Cox model on the entire dataset
-        cph = CoxPHFitter()
+        cph = CoxPHFitter(penalizer=0.1)  # You can adjust the penalizer for regularization
         cph.fit(pred_dataset[features_name + ['target', 'duration']],
                 duration_col='duration', event_col='target')
 
@@ -425,6 +463,60 @@ def run_prediction():
         print("\n--- Hazard Ratios ---")
         print(hr_table)
 
+        #plot confidence intervals for hazard ratios
+
+        # Reverse order so the first covariate appears at the top
+        df = cph.summary.sort_values(by='exp(coef)', ascending=True)
+        y_positions = range(len(df))
+
+        plt.figure(figsize=(8, 6))
+
+        sig_plotted = False
+        non_sig_plotted = False
+
+        for idx, (var_name, row) in enumerate(df.iterrows()):
+            # Significance (oppure: row['p'] < 0.05)
+            is_significant = (row['exp(coef) lower 95%'] > 1.0) or (row['exp(coef) upper 95%'] < 1.0)
+            
+            color = '#D9534F' if is_significant else '#555555'
+            
+            if is_significant and not sig_plotted:
+                label = 'Significant (p < 0.05)'
+                sig_plotted = True
+            elif not is_significant and not non_sig_plotted:
+                label = 'Not significant'
+                non_sig_plotted = True
+            else:
+                label = None
+
+            xerr_low = row['exp(coef)'] - row['exp(coef) lower 95%']
+            xerr_high = row['exp(coef) upper 95%'] - row['exp(coef)']
+
+            plt.errorbar(
+                row['exp(coef)'],
+                idx,
+                xerr=[[xerr_low], [xerr_high]],
+                fmt='s',
+                color=color,
+                ecolor=color,
+                markerfacecolor='white',
+                markeredgecolor=color,
+                capsize=4,
+                label=label
+            )
+
+        # Vertical line at HR = 1 (null effect)
+        plt.axvline(x=1.0, color="#4E9ED6", linestyle='--', label='HR = 1 (No effect)')
+
+        plt.yticks(y_positions, df.index)
+        plt.xlabel('Hazard Ratio')
+        plt.title('Hazard Ratios with 95% Confidence Intervals')
+        plt.legend(frameon=True)
+        plt.tight_layout()
+
+        plt.savefig(PRED_FOLDER_RESULTS / 'cox_hazard_ratios.png')
+        plt.close()
+
         ############ 2. CONCORDANCE INDEX (in-sample, on full dataset) ############
         c_index = concordance_index(
             pred_dataset['duration'],
@@ -433,26 +525,43 @@ def run_prediction():
         )
         print(f"\nConcordance Index (in-sample): {c_index:.3f}")
 
+        ############ 2. CONCORDANCE INDEX (5-fold Out-of-Sample Cross-Validation) ############
+        from lifelines.utils import k_fold_cross_validation
+    
+
+        # Initialize a fresh model instance with the same regularization penalizer
+        cph_cv = CoxPHFitter(penalizer=0.1)
+
+        # Run 5-fold cross-validation evaluating out-of-sample Harrell's C-index
+        cv_scores = k_fold_cross_validation(
+            cph_cv,
+            pred_dataset[features_name + ['target', 'duration']],
+            duration_col='duration',
+            event_col='target',
+            k=5,
+            scoring_method="concordance_index"
+        )
+
+        cv_mean = np.mean(cv_scores)
+        cv_sd = np.std(cv_scores)
+
+        print(f"\nConcordance Index (5-fold CV): {cv_mean:.3f} ± {cv_sd:.3f}")
+        print(f"Per-fold C-indices: {[round(s, 3) for s in cv_scores]}")
+
         ############ 3. CHECK PROPORTIONAL HAZARDS ASSUMPTION ############
         print("\n--- Proportional Hazards Assumption Check ---")
         cph.check_assumptions(pred_dataset[features_name + ['target', 'duration']], 
                             p_value_threshold=0.05)
         
 
-        ############ 4. SURVIVAL CURVES FOR KEY COVARIATES (e.g., cluster membership) ############
-        fig, ax = plt.subplots(figsize=(8, 6))
-        cph.plot_partial_effects_on_outcome(covariates='cluster_3', values=[0, 1], ax=ax)
-        plt.title('Estimated Survival Function by Cluster 3 Membership')
-        plt.xlabel('Months since end of sequence')
-        plt.ylabel('Survival probability (no event)')
-        plt.savefig(PRED_FOLDER/PRED_NAME/'cox_survival_curves.png')
+    
 
         ############ 5. BASELINE HAZARD / CUMULATIVE HAZARD (optional, descriptive) ############
         cph.baseline_hazard_.plot()
         plt.title('Baseline Cumulative Hazard')
         plt.xlabel('Months')
         plt.ylabel('Cumulative Hazard')
-        plt.savefig(PRED_FOLDER/PRED_NAME/'cox_baseline_hazard.png')
+        plt.savefig(PRED_FOLDER_RESULTS/'cox_baseline_hazard.png')
         plt.close()
 
     elif MODEL=='cox_time_varying':

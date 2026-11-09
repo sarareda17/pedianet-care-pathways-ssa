@@ -11,11 +11,18 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 CLUSTER_FOLDER=ROOT/'SSA'/'results'/'sequences'/'sequence_clustering'/SEQUENCE_NAME/CLUSTERING
 DISS_FOLDER=ROOT/'SSA'/'results'/'sequences'/'sequence_dissimilarities'
 
+# Choose your two custom colors for the gradient (Hex codes or standard names)
+COLOR_START = "#ffffff"  # Light/Neutral color for low/no correlation (e.g., white)
+COLOR_END = "#649ABF"    # Strong color for high correlation (e.g., steel blue)
+# Create the custom 2-color gradient palette
+from matplotlib.colors import LinearSegmentedColormap
+custom_cmap = LinearSegmentedColormap.from_list("custom_gradient", [COLOR_START, COLOR_END])
+
 
 distances=['OM_CONST', 'OM_TRATE', 'OM_INDELSLOG', 'LCS', 'LCS_NO_WEIGHTED', 'HAM','HAM_WIND_2','HAM_WIND_2_LOG' ]
-#distances=['OM_INDELSLOG', 'LCS', 'LCS_WEIGHTED','HAM_WIND_2','HAM_WIND_2_LOG' ]
+#distances=['LCS_NO_WEIGHTED', 'OM_TRATE','OM_INDELSLOG','HAM_WIND_2_LOG']
 
-"""
+
 #compute Adjusted Rand Index (ARI) between two clusterings
 from sklearn.metrics import adjusted_rand_score
 
@@ -36,22 +43,43 @@ for dist in distances:
         #store the ARI value in the matrix
         ari_matrix.loc[dist, dist2] = ari
 
+display_names = {
+    'OM_CONST': 'OM_CONST',
+    'OM_TRATE': 'OM_TRATE',
+    'OM_INDELSLOG': 'OM_INDELSLOG',
+    'LCS': 'LCS',
+    'LCS_NO_WEIGHTED': 'LCS_NO_WEIGHTED',
+    'HAM': 'HAM',
+    'HAM_WIND_2': 'HAM_WIND',
+    'HAM_WIND_2_LOG': 'HAM_WIND_LOG'
+}
+
+ari_matrix= ari_matrix.astype(float).rename(index=display_names, columns=display_names)
+
+# Build a mask to hide the upper triangle (optional, makes it cleaner since it's symmetric)
+mask = np.triu(np.ones_like(ari_matrix, dtype=bool), k=1)
 #save the ARI matrix as a figure
-plt.figure(figsize=(10,8))
-sns.heatmap(ari_matrix.astype(float), annot=True, cmap='coolwarm', center=0)
-plt.title('Adjusted Rand Index between Different Distance Metrics')
+plt.figure(figsize=(10, 8))
+sns.heatmap(
+    ari_matrix.astype(float),
+    annot=True,
+    cmap=custom_cmap,
+    center=0,
+    mask=mask
+)
+plt.title('Adjusted Rand Index')
 plt.xlabel('Distance Metric')
 plt.ylabel('Distance Metric')
-plt.savefig(CLUSTER_FOLDER/'ari_matrix_heatmap.png')
+plt.tight_layout()
+plt.savefig(CLUSTER_FOLDER / 'ari_matrix_heatmap.png', bbox_inches='tight')
+
 """
 
 #compute mantel test with Spearman rank coefficint between dissimilarity matrices of different distances
 from skbio.stats.distance import mantel
 from itertools import combinations
 
-# Choose your two custom colors for the gradient (Hex codes or standard names)
-COLOR_START = "#ffffff"  # Light/Neutral color for low/no correlation (e.g., white)
-COLOR_END = "#649ABF"    # Strong color for high correlation (e.g., steel blue)
+
 
 # --- 1. Load Matrices ---
 matrices = {}
@@ -98,10 +126,7 @@ print(df_pvalues.round(4))
 # --- 4. Plot the Customized Heatmap ---
 plt.figure(figsize=(8, 6))
 
-# Create the custom 2-color gradient palette
-from matplotlib.colors import LinearSegmentedColormap
 
-custom_cmap = LinearSegmentedColormap.from_list("custom_gradient", [COLOR_START, COLOR_END])
 
 # Build a mask to hide the upper triangle (optional, makes it cleaner since it's symmetric)
 mask = np.triu(np.ones_like(df_corr, dtype=bool), k=1)
@@ -188,3 +213,4 @@ if "df_corr" in locals():
     print("\n--- Absolute Difference (|Strategy A - Strategy B|) ---")
     print(f"Max difference:  {abs_diff.values.max():.4f}")
     print(f"Mean difference: {abs_diff.values[np.triu_indices(matrix_size, k=1)].mean():.4f}")
+"""
