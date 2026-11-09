@@ -8,6 +8,7 @@ CLUSTERING_FOLDER=ROOT/'SSA'/'results'/'sequences'/'sequence_clustering'
 CHAR_FOLDER=ROOT/'SSA'/'results'/'sequences'/'sequence_characteristics'
 PRED_FOLDER=ROOT/'SSA'/'prediction'
 from config import SEQUENCE_NAME, DISTANCE_METRIC, CLUSTERING,LINKAGE,NUM_CLUSTERS,YEARS,SEASON,SEQ_LENGTH,STATES_LABELS, NUM_CHANNELS, TIME_UNIT
+from config import FLAG, PRED_NAME, FEATURES, CAT_FEATURES, MODEL, STRATA
 
 def run_prediction():
     """
@@ -16,13 +17,6 @@ def run_prediction():
     """
 
     ########### SET UP ###########
-    FLAG=True #flag to use multichannel clusters instead of single channel partitions 
-    PRED_NAME='target_lrti' #name of the prediction task: 'target_lrti' or 'target_obs_drugs' or 'target_obesity' or 'target_BMI'
-    #possible features are: 'sex','age','cluster','entropy','turbulence','num_transitions','adi','num_subsequences','complexity','variance_of_spell','count', 'months_last_event','last_year_events'
-    FEATURES=['age','sex','adi','cluster','entropy','num_transitions','variance_of_spell','complexity','turbulence','months_last_event'] #features to use for prediction
-    CAT_FEATURES=['sex','cluster','adi'] #categorical features to use for prediction
-    MODEL='cox_regression' #model to use for prediction: 'logistic_regression' or 'cox_regression' or 'lasso_regression' or 'cox_time_varying' or cox_strata_entropy' or 'cox_time_varying_strata' or 'cox_strata_cluster'
-    STRATA='last_year_events' #stratification variable
     PRED_FOLDER_RESULTS=ROOT/'SSA'/'prediction'/PRED_NAME/SEQUENCE_NAME/DISTANCE_METRIC
     (PRED_FOLDER_RESULTS).mkdir(parents=True, exist_ok=True)
 

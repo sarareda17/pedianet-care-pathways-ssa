@@ -1,6 +1,10 @@
-"""
-Thesis pipeline for State Sequence Analysis (SSA) and Predictive Survival Modeling.
+################################################################################################################
+################################# PIPELINE for STATE SEQUENCE ANLYSIS (SSA) ####################################
+#################################### and RISK PREDICTION SURVIVAL MODELING ######################################
+################################################################################################################
 
+
+"""
 ========================================================================================
 HOW TO RUN THIS PIPELINE (CLI USAGE WITH ARGPARSE):
 ========================================================================================
@@ -27,11 +31,13 @@ independently using the `--step` flag:
 """
 
 import argparse
-from config import SEQUENCE_NAME, CHANNEL, DISTANCE_METRIC, NUM_CLUSTERS
+from THESIS_BREATH.SSA.src.multi_channel_clustering import running_multichannel_clustering
+from config import SEQUENCE_NAME, CHANNEL, DISTANCE_METRIC, NUM_CLUSTERS, MULTICHANNEL
 
 # Core step imports from modular scripts
 from dataset_sequences import build_dataset
 from sequence_analysis import run_sequence_analysis
+from multi_channel_clustering import running_multichannel_clustering
 from prediction import run_prediction
 
 
@@ -48,30 +54,35 @@ def main():
     args = parser.parse_args()
 
     print("\n" + "=" * 65)
-    print("           THESIS BREATH: PIPELINE EXECUTION")
+    print("           SSA PIPELINE EXECUTION")
     print("=" * 65)
     print(f"Target Sequence     : {SEQUENCE_NAME}")
     print(f"Active Channel      : {CHANNEL}")
     print(f"Distance Metric     : {DISTANCE_METRIC}")
     print(f"Clusters (k)        : {NUM_CLUSTERS}")
-    #print(f"Prediction Model    : {MODEL}")
     print(f"Selected Step       : {args.step}")
     print("=" * 65 + "\n")
 
     # STEP 1: Sequence engineering and cohort preprocessing
     if args.step in ["all", "dataset"]:
-        print(">>> [Step 1/3] Generating patient sequence trajectories...")
+        print(">>> [Step 1/3] Generating patient care sequence...")
         dataset_sequences = build_dataset()
         print(">>> [Step 1/3] Sequence dataset successfully created.\n")
 
-    # STEP 2: Sequence metrics, distance matrices, and trajectory clustering
+    # STEP 2: Sequence exploration, dissimilairty computation, and clustering
     if args.step in ["all", "analysis"]:
-        print(">>> [Step 2/3] Running Sequence Analysis, Dissimilarity & Clustering...")
-        run_sequence_analysis()
-        print(">>> [Step 2/3] Clustering and sequence profiling completed.\n")
+        if not MULTICHANNEL:
+            print(">>> [Step 2/3] Running Sequence Analysis, Dissimilarity & Clustering...")
+            run_sequence_analysis()
+            print(">>> [Step 2/3] Clustering and sequence profiling completed.\n")
+        else:
+            print(">>> [Step 2/3] Running multichannel clustering.\n")
+            running_multichannel_clustering()
+            print(">>> [Step 2/3] Multichannel clustering completed.\n")
+        
 
     # STEP 3: Survival modeling (Cox) and risk factor evaluation
-    if args.step in ["predict"]:
+    if args.step in ["all","predict"]:
         print(f">>> [Step 3/3] Training and evaluating predictive model...")
         run_prediction()
         print(">>> [Step 3/3] Predictive modeling pipeline completed.\n")

@@ -1,19 +1,20 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from pathlib import Path
-
-import sequenzo
-ROOT = Path(__file__).resolve().parent.parent.parent
 from config import STATES_LABELS,COSTS
+import sequenzo
+from pathlib import Path
+ROOT = Path(__file__).resolve().parent.parent.parent
 
+############################################################################################
+################################## DISSIMILARITY MEASURES ##################################
+############################################################################################
+#This file contains the functions to compute the dissimilarity matrix between sequences using 
+#different dissimilarity measures.
 
-from sequenzo.dissimilarity_measures import get_distance_matrix
-
-##################################DISSIMILARITY MEASURE ##################################
-
+#main functions to get the dissimilarity matrix, either loading it from a file if it exists 
+#or computing it if it doesn't
 def get_dissimilarity_matrix(metric,sequence, df_sequence,SEQUENCE_NAME,costs):
-    #if metric is found in the folder of dissimilarities load it, otherwise compute it and save it in the folder
     dissimilarity_path=ROOT / "SSA" / "results" / "sequences"/"sequence_dissimilarities"/f"{SEQUENCE_NAME}_{metric}.npy"
     if dissimilarity_path.exists():
         print(f"Loading precomputed distance matrix for {metric}...")
@@ -23,7 +24,9 @@ def get_dissimilarity_matrix(metric,sequence, df_sequence,SEQUENCE_NAME,costs):
         dist=compute_dissimilarity_matrix(metric,sequence, df_sequence,SEQUENCE_NAME,costs)
     return dist
 
-#function to apply the chosen dissimilarity measure 
+
+from sequenzo.dissimilarity_measures import get_distance_matrix
+
 def compute_dissimilarity_matrix(metric,sequence, df_sequence,SEQUENCE_NAME,costs):
     if metric == 'OM_TRATE':
         #OPTIMAL MATCHING with transistion rate substitution costs and indel costs=1
@@ -114,12 +117,11 @@ def compute_dissimilarity_matrix(metric,sequence, df_sequence,SEQUENCE_NAME,cost
         #LONGEST COMMON SUBSEQUENCE considering longest subsequences with at least one non-no state (at least one diagnosis)
         dist=lcs_constrained_distance_matrix(df_sequence, no_state='NO')
     elif metric == 'LCS_NO_WEIGHTED':
-        #LONGEST COMMON SUBSEQUENCE with weighted count for states NO
+        #LONGEST COMMON SUBSEQUENCE with weighted cost for state NO
         dist=lcs_weighted_distance_matrix(df_sequence, no_state='NO', w_no=0.15)
     elif metric == 'TED':
         #TEMPORAL EDIT DISTANCE with fixed costs
         dist=TED(df_sequence, c_sub=2.0, c_ins=1.0, c_del=2.0, c_time=0.5)
-
     else:
         raise ValueError(f"Unknown distance metric: {metric}")
     
@@ -129,6 +131,12 @@ def compute_dissimilarity_matrix(metric,sequence, df_sequence,SEQUENCE_NAME,cost
     dist = np.asarray(dist)
     np.save(ROOT / "SSA" / "results" / "sequences"/"sequence_dissimilarities"/f"{SEQUENCE_NAME}_{metric}.npy", dist)
     return dist
+
+
+
+############################# UTILS FUNCTIONS ###################################
+#functions to build the indel and substitution cost matrices in optimal matching
+
 
 
 def build_om_diag_sm(states_labels: dict,
