@@ -1,11 +1,15 @@
-#MULTI CHANNEL CLUSTERING
+################################################################################################################
+########################################### MULTICHANNEL CLUSTERING  ###########################################
+################################################################################################################
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent.parent
-
-from config import SEASON, SEQUENCE_NAME, SEQUENCE_NAME_0, SEQUENCE_NAME_1, SEQUENCE_NAME_2, SEQUENCE_NAME_3, DISTANCE_METRIC,DISTANCE_METRIC_1, DISTANCE_METRIC_2, DISTANCE_METRIC_3, MAX_CLUSTERS, NUM_CLUSTERS, CLUSTERING, LINKAGE,NUM_CHANNELS,YEARS,SEASON
+from config import NUM_CHANNELS,CLUSTERING,YEARS,SEASON
+from config import SEASON, SEQUENCE_NAME_0, SEQUENCE_NAME_1, SEQUENCE_NAME_2, SEQUENCE_NAME_3
+from config import DISTANCE_METRIC,DISTANCE_METRIC_1, DISTANCE_METRIC_2, DISTANCE_METRIC_3
 from config import W_0,W_1,W_2,W_3
 
 def running_multichannel_clustering():

@@ -55,7 +55,7 @@ def run_sequence_analysis():
 
     ##### SEQUENCE DISSIMILARITY #####
     from dissimilarity import get_dissimilarity_matrix
-    distance_matrix=get_dissimilarity_matrix(DISTANCE_METRIC, sequence, df_sequence,SEQUENCE_NAME,COSTS)
+    distance_matrix=get_dissimilarity_matrix(DISTANCE_METRIC, sequence, df_sequence,SEQUENCE_NAME)
 
 
     ##### SEQUENCE CLUSTERING #####

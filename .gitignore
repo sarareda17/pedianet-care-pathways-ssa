@@ -3,6 +3,7 @@ data/
 **/datasets/
 **/results/
 **/prediction/
+**/extras
 **/cataloghi_ambulatoriale_veneto/
 
 # File dati e modelli pesanti ovunque si trovino
