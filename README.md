@@ -40,7 +40,7 @@ Single place where the analysis is defined. It contains:
 - the **prediction** settings (target, features, model);
 - the paths of all input and output folders.
 
-### Step 1: Sequence dataset (`dataset_sequences.py`, `utils_sequences.py`)
+### Step 1: Sequence dataset ###### (`dataset_sequences.py`, `utils_sequences.py`)
 Selects the clinical events of the chosen channel, maps ICD-9 / ATC / care codes to states, selects the patient cohort, and builds one sequence per patient (one state per time unit, with a priority rule when several events fall in the same unit). It also saves descriptive plots and tables of the preprocessed data.
 The cohort is selected from a primary channel (diagnoses); the other channels load the saved cohort.
 
@@ -48,7 +48,7 @@ The cohort is selected from a primary channel (diagnoses); the other channels lo
 - **Single channel** (`sequence_analysis.py`, `dissimilarity.py`, `utils_SSA.py`): sequence visualization, sequence characteristics (e.g. entropy, turbulence, complexity), pairwise dissimilarity matrix, hierarchical clustering, and cluster profiling.
 - **Multichannel** (`multi_channel_clustering.py`): loads the dissimilarity matrices of each channel, normalizes and combines them with the channel weights, and clusters the combined matrix. Used when `MULTICHANNEL=True`.
 
-### Step 3: Risk prediction (`prediction.py`)
+### Step 3: Risk prediction ###### (`prediction.py`)
 Defines the outcome in a follow-up window after the end of the sequence (e.g. lower respiratory tract infections, obstructive airway drug prescriptions), builds the features (patient characteristics, cluster membership, sequence characteristics) and fits the selected model: Cox proportional hazards (also stratified or with time-varying covariates), or logistic / lasso regression. It reports hazard ratios and the concordance index.
 
 ## Files in `SSA/src/`
