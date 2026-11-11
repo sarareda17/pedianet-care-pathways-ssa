@@ -1,6 +1,6 @@
-# THESIS_BREATH
+#Code thesis: Multichannel State Sequence Analysis of Care Pathways for Phenotyping and Risk Prediction: A Case Study on Pediatric Respiratory Diseases
 
-Code for my thesis on respiratory care trajectories in children, based on **State Sequence Analysis (SSA)** of primary-care data (Pedianet) and **sequence-based risk prediction** with survival models.
+The objective of the thesis is to model pediatric respiratory care pathways from routinely collected data using  **State Sequence Analysis (SSA)** and to implement **sequence-based risk prediction** through survival models.
 
 > The raw data are not included in this repository (sensitive health data). This README only describes how the code is organized.
 
@@ -18,7 +18,7 @@ THESIS_BREATH/
 ```
 
 - **`data_exploration/`**: descriptive analyses of the raw data, done before building the sequences.
-- **`SSA/`**: the main part of the thesis: construction of the sequences, their analysis and clustering, and the prediction of later outcomes.
+- **`SSA/`**: the main part of the thesis: construction of the sequences, their analysis and clustering, and the prediction of future acute respiratory events.
 
 ## SSA pipeline
 
@@ -33,7 +33,7 @@ python main.py --step predict   # step 3 only
 
 ### Configuration (`config.py`)
 Single place where the analysis is defined. It contains:
-- the **channels** (diagnoses, macro-diagnoses, super-macro-diagnoses, drugs, secondary care, health), each with its dataset, states, state priority, colors and substitution costs;
+- the **channels** each with its data source, states, state priority, colors and substitution costs;
 - the **sequence parameters** (alignment by age or by season, time unit, sequence length);
 - the **multichannel setting** (number of channels and weights);
 - the **dissimilarity measure** and the **clustering** settings (algorithm, linkage, number of clusters);
@@ -49,7 +49,7 @@ The cohort is selected from a primary channel (diagnoses); the other channels lo
 - **Multichannel** (`multi_channel_clustering.py`): loads the dissimilarity matrices of each channel, normalizes and combines them with the channel weights, and clusters the combined matrix. Used when `MULTICHANNEL=True`.
 
 ### Step 3: Risk prediction (`prediction.py`)
-Defines the outcome in a follow-up window after the end of the sequence (e.g. lower respiratory tract infections, obstructive airway drug prescriptions, obesity/overweight), builds the features (patient characteristics, cluster membership, sequence characteristics) and fits the selected model: Cox proportional hazards (also stratified or with time-varying covariates), or logistic / lasso regression. It reports hazard ratios and the concordance index.
+Defines the outcome in a follow-up window after the end of the sequence (e.g. lower respiratory tract infections, obstructive airway drug prescriptions), builds the features (patient characteristics, cluster membership, sequence characteristics) and fits the selected model: Cox proportional hazards (also stratified or with time-varying covariates), or logistic / lasso regression. It reports hazard ratios and the concordance index.
 
 ## Files in `SSA/src/`
 
