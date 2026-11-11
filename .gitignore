@@ -5,6 +5,9 @@ data/
 **/prediction/
 **/extras
 **/cataloghi_ambulatoriale_veneto/
+**/catalogo
+**/check
+
 
 # File dati e modelli pesanti ovunque si trovino
 *.csv
