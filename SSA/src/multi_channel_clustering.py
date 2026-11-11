@@ -11,8 +11,7 @@ from config import NUM_CHANNELS,CLUSTERING,YEARS,SEASON
 from config import SEASON, SEQUENCE_NAME_0, SEQUENCE_NAME_1, SEQUENCE_NAME_2, SEQUENCE_NAME_3
 from config import DISTANCE_METRIC,DISTANCE_METRIC_1, DISTANCE_METRIC_2, DISTANCE_METRIC_3
 from config import W_0,W_1,W_2,W_3
-
-ROOT_DISSIMILARITY=ROOT/'SSA'/'results'/'sequences'/'sequence_dissimilarities'
+from config import ROOT, DATASETS_DIR, DISSIM_DIR
 
 def running_multichannel_clustering():
     """
@@ -25,9 +24,9 @@ def running_multichannel_clustering():
     """
     #load patients_sequence datasets to get ids
     if SEASON== True:
-        patients_sequence=pd.read_csv(ROOT/'SSA'/'datasets'/ f"selected_patients_diagnoses_season_{YEARS}.csv")
+        patients_sequence=pd.read_csv(DATASETS_DIR/ f"selected_patients_diagnoses_season_{YEARS}.csv")
     else:
-        patients_sequence=pd.read_csv(ROOT/'SSA'/'datasets'/ f"selected_patients_diagnoses.csv")
+        patients_sequence=pd.read_csv(DATASETS_DIR/ f"selected_patients_diagnoses.csv")
 
     ids=patients_sequence['pedianet_id'].tolist()
 
@@ -47,7 +46,7 @@ def running_multichannel_clustering():
     for i in range(NUM_CHANNELS):
         if i==0:
             print(f'Loading distance matrix for channel {i} with sequence {SEQUENCE_NAME_0} and distance metric {DISTANCE_METRIC}')
-            path_0=ROOT_DISSIMILARITY/ f'{SEQUENCE_NAME_0}_{DISTANCE_METRIC}.npy'
+            path_0=DISSIM_DIR/ f'{SEQUENCE_NAME_0}_{DISTANCE_METRIC}.npy'
             #warning if path doesnot exist
             if not path_0.exists():
                 raise FileNotFoundError(f"Distance matrix file not found: {path_0}")
@@ -56,7 +55,7 @@ def running_multichannel_clustering():
             pooled_dist+=W_0*dist0   
         elif i==1:
             print(f'Loading distance matrix for channel {i} with sequence {SEQUENCE_NAME_1} and distance metric {DISTANCE_METRIC_1}')
-            path_1=ROOT_DISSIMILARITY/ f'{SEQUENCE_NAME_1}_{DISTANCE_METRIC_1}.npy'
+            path_1=DISSIM_DIR/ f'{SEQUENCE_NAME_1}_{DISTANCE_METRIC_1}.npy'
             #warning if path doesnot exist
             if not path_1.exists():
                 raise FileNotFoundError(f"Distance matrix file not found: {path_1}")
@@ -65,7 +64,7 @@ def running_multichannel_clustering():
             pooled_dist+=W_1*dist1
         elif i==2:
             print(f'Loading distance matrix for channel {i} with sequence {SEQUENCE_NAME_2} and distance metric {DISTANCE_METRIC_2}')
-            path_2=ROOT_DISSIMILARITY/ f'{SEQUENCE_NAME_2}_{DISTANCE_METRIC_2}.npy'
+            path_2=DISSIM_DIR/ f'{SEQUENCE_NAME_2}_{DISTANCE_METRIC_2}.npy'
             #warning if path doesnot exist
             if not path_2.exists():
                 raise FileNotFoundError(f"Distance matrix file not found: {path_2}")
@@ -74,7 +73,7 @@ def running_multichannel_clustering():
             pooled_dist+=W_2*dist2
         elif i==3:
             print(f'Loading distance matrix for channel {i} with sequence {SEQUENCE_NAME_3} and distance metric {DISTANCE_METRIC_3}')
-            path_3=ROOT_DISSIMILARITY/ f'{SEQUENCE_NAME_3}_{DISTANCE_METRIC_3}.npy'
+            path_3=DISSIM_DIR/ f'{SEQUENCE_NAME_3}_{DISTANCE_METRIC_3}.npy'
             #warning if path doesnot exist
             if not path_3.exists():
                 raise FileNotFoundError(f"Distance matrix file not found: {path_3}")
@@ -92,7 +91,7 @@ def running_multichannel_clustering():
         cluster_labels=Kmedoids_clustering(None,ids,  pooled_dist)
 
     #load dataset (channel 0) with sequences for analysis
-    df=pd.read_csv(ROOT/'SSA'/'datasets'/ f'{SEQUENCE_NAME_0}.csv')
+    df=pd.read_csv(DATASETS_DIR/ f'{SEQUENCE_NAME_0}.csv')
     time_cols=[df.columns[i] for i in range(len(df.columns)) if df.columns[i].isdigit()]
     df_sequence=df[['pedianet_id'] + time_cols]
 

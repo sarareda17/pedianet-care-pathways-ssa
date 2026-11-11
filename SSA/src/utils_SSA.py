@@ -5,22 +5,19 @@ import seaborn as sns
 import sequenzo
 import matplotlib.colors as mcolors
 import matplotlib.patches as mpatches
-from config import SEQUENCE_NAME, TIME_UNIT, SEQ_LENGTH, COSTS, STATES_LABELS, CUSTOM_COLORS, COL_ID, COL_STATE, COL_DATE,NUM_CHANNELS
+from config import SEQUENCE_NAME, STATES_LABELS, CUSTOM_COLORS, COL_ID,NUM_CHANNELS
 from config import DISTANCE_METRIC,CLUSTERING, LINKAGE, MAX_CLUSTERS, NUM_CLUSTERS
 from config import SEQUENCE_NAME_0,SEQUENCE_NAME_1,SEQUENCE_NAME_2, SEQUENCE_NAME_3, STATES_LABELS_1, STATES_LABELS_2 , STATES_LABELS_3
 from config import CUSTOM_COLORS_1, CUSTOM_COLORS_2, CUSTOM_COLORS_3
-from pathlib import Path
-ROOT = Path(__file__).resolve().parent.parent.parent
-ROOT_FOLDER_CHAR=ROOT/'SSA'/'results'/'sequences'/'sequence_characteristics'
-ROOT_FOLDER_VISUAL=ROOT/'SSA'/'results'/'sequences'/'sequence_visualizations'
-ROOT_FOLDER_CLUSTERING = ROOT / "SSA" / "results" /"sequences" / "sequence_clustering"
+from config import ROOT, CHAR_DIR, VISUAL_DIR, CLUSTER_DIR
+
 
 
 ##### SEQUENCE CHARACTERISTICS #####
 
 def compute_sequence_characteristics(sequence, SEQUENCE_NAME, STATES_LABELS,custom_colors):
-    #create a folder in ROOT_FOLDER_CHAR for the sequence characteristics if it doesn't exist
-    (ROOT_FOLDER_CHAR / SEQUENCE_NAME).mkdir(parents=True, exist_ok=True)
+    #create a folder in CHAR_DIR for the sequence characteristics if it doesn't exist
+    (CHAR_DIR / SEQUENCE_NAME).mkdir(parents=True, exist_ok=True)
 
     #get sequence indexes
     sequence_indexes = sequence.ids
@@ -36,7 +33,7 @@ def compute_sequence_characteristics(sequence, SEQUENCE_NAME, STATES_LABELS,cust
     plt.xlabel('Number of distinct subsequences')
     plt.ylabel('Frequency')
     plt.tight_layout()
-    plt.savefig(ROOT_FOLDER_CHAR / SEQUENCE_NAME / 'subsequences_per_sequence.png')
+    plt.savefig(CHAR_DIR / SEQUENCE_NAME / 'subsequences_per_sequence.png')
 
     
     ###################### NUMBER OF TRANSITIONS ########################
@@ -57,7 +54,7 @@ def compute_sequence_characteristics(sequence, SEQUENCE_NAME, STATES_LABELS,cust
     plt.xlabel('Number of transitions')
     plt.ylabel('Frequency')
     plt.tight_layout()
-    plt.savefig(ROOT_FOLDER_CHAR / SEQUENCE_NAME / 'transitions_per_sequence.png')
+    plt.savefig(CHAR_DIR / SEQUENCE_NAME / 'transitions_per_sequence.png')
 
     ######################## SPELL DURATION VARIANCE ####################### 
     #measures how evenly the durations of spells (runs of identical states) are distributed in each sequence 
@@ -76,7 +73,7 @@ def compute_sequence_characteristics(sequence, SEQUENCE_NAME, STATES_LABELS,cust
     plt.ylabel('Mean Duration of Spells')
     plt.xticks([])
     plt.tight_layout()
-    plt.savefig(ROOT_FOLDER_CHAR / SEQUENCE_NAME / 'mean_duration_of_spells_per_sequence.png')
+    plt.savefig(CHAR_DIR / SEQUENCE_NAME / 'mean_duration_of_spells_per_sequence.png')
 
     #plot of variance of spell durations per sequence
     plt.figure(figsize=(10,6))
@@ -86,7 +83,7 @@ def compute_sequence_characteristics(sequence, SEQUENCE_NAME, STATES_LABELS,cust
     plt.ylabel('Variance of Spell Durations')
     plt.xticks([])
     plt.tight_layout()
-    plt.savefig(ROOT_FOLDER_CHAR / SEQUENCE_NAME / 'variance_of_spell_durations_per_sequence.png')
+    plt.savefig(CHAR_DIR / SEQUENCE_NAME / 'variance_of_spell_durations_per_sequence.png')
 
 
 
@@ -104,7 +101,7 @@ def compute_sequence_characteristics(sequence, SEQUENCE_NAME, STATES_LABELS,cust
     #plt.xlabel('Number of times state NO appears in sequence')
     #plt.ylabel('Frequency')
     #plt.tight_layout()
-    #plt.savefig(ROOT_FOLDER_CHAR / SEQUENCE_NAME / 'state_NO_freq_per_sequence.png')
+    #plt.savefig(CHAR_DIR / SEQUENCE_NAME / 'state_NO_freq_per_sequence.png')
 
     ######################### WITHIN SEQUENCE ENTROPY ######################## 
     #measures how diverse the states are within each sequence
@@ -121,7 +118,7 @@ def compute_sequence_characteristics(sequence, SEQUENCE_NAME, STATES_LABELS,cust
     plt.xlabel('Entropy')
     plt.ylabel('Frequency')
     plt.tight_layout()
-    plt.savefig(ROOT_FOLDER_CHAR / SEQUENCE_NAME / 'entropy_per_sequence.png')
+    plt.savefig(CHAR_DIR / SEQUENCE_NAME / 'entropy_per_sequence.png')
 
     ########################## CROSS SECTIONAL ENTROPY ######################## 
     #analyzes how states are distributed across time points in the sequences computing:
@@ -147,7 +144,7 @@ def compute_sequence_characteristics(sequence, SEQUENCE_NAME, STATES_LABELS,cust
     plt.ylabel('Frequency')
     plt.legend(title='States', bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.tight_layout()
-    plt.savefig(ROOT_FOLDER_CHAR / SEQUENCE_NAME / 'state_frequencies_by_time.png')
+    plt.savefig(CHAR_DIR / SEQUENCE_NAME / 'state_frequencies_by_time.png')
 
     #entropy by time plot
     plt.figure(figsize=(10,6))
@@ -156,7 +153,7 @@ def compute_sequence_characteristics(sequence, SEQUENCE_NAME, STATES_LABELS,cust
     plt.xlabel('Time')
     plt.ylabel('Normalized Entropy')
     plt.tight_layout()
-    plt.savefig(ROOT_FOLDER_CHAR / SEQUENCE_NAME / 'cross_sectional_entropy_by_time.png')
+    plt.savefig(CHAR_DIR / SEQUENCE_NAME / 'cross_sectional_entropy_by_time.png')
 
     #effective number of states by time plot
     plt.figure(figsize=(10,6))
@@ -165,7 +162,7 @@ def compute_sequence_characteristics(sequence, SEQUENCE_NAME, STATES_LABELS,cust
     plt.xlabel('Time')
     plt.ylabel('Effective Number of States')
     plt.tight_layout()
-    plt.savefig(ROOT_FOLDER_CHAR / SEQUENCE_NAME / 'effective_number_of_states_by_time.png')
+    plt.savefig(CHAR_DIR / SEQUENCE_NAME / 'effective_number_of_states_by_time.png')
 
 
     ########################### SEQUENCE COMPLEXITY ##########################
@@ -183,7 +180,7 @@ def compute_sequence_characteristics(sequence, SEQUENCE_NAME, STATES_LABELS,cust
     plt.xlabel('Complexity Index')
     plt.ylabel('Frequency')
     plt.tight_layout()
-    plt.savefig(ROOT_FOLDER_CHAR / SEQUENCE_NAME / 'complexity_index_per_sequence.png')
+    plt.savefig(CHAR_DIR / SEQUENCE_NAME / 'complexity_index_per_sequence.png')
     
     ######################### TURBOLENCE ##########################
     #measures how turbolent (irregular, unpredictable, or unstable) a sequence is. It captures two main aspects:
@@ -203,7 +200,7 @@ def compute_sequence_characteristics(sequence, SEQUENCE_NAME, STATES_LABELS,cust
     plt.xlabel('Turbulence')
     plt.ylabel('Frequency')
     plt.tight_layout()
-    plt.savefig(ROOT_FOLDER_CHAR / SEQUENCE_NAME / 'turbulence_per_sequence.png')
+    plt.savefig(CHAR_DIR / SEQUENCE_NAME / 'turbulence_per_sequence.png')
 
     #save distribution plot of normalized turbulence per sequence
     plt.figure(figsize=(10,6))
@@ -211,7 +208,7 @@ def compute_sequence_characteristics(sequence, SEQUENCE_NAME, STATES_LABELS,cust
     plt.xlabel('Normalized Turbulence')
     plt.ylabel('Frequency')
     plt.tight_layout()
-    plt.savefig(ROOT_FOLDER_CHAR / SEQUENCE_NAME / 'normalized_turbulence_per_sequence.png')
+    plt.savefig(CHAR_DIR / SEQUENCE_NAME / 'normalized_turbulence_per_sequence.png')
 
     ####################### LONGITUDINAL CHARACTERISTICS  ########################
     #creates a horizontal bar chart showing four key sequence characteristics for selected sequences:
@@ -221,7 +218,7 @@ def compute_sequence_characteristics(sequence, SEQUENCE_NAME, STATES_LABELS,cust
     #Complexity: how complex the overall pattern is 
     from sequenzo.sequence_characteristics.plot_characteristics import plot_longitudinal_characteristics
     plot_longitudinal_characteristics(
-        sequence, k=10, save_as=str(ROOT_FOLDER_CHAR / SEQUENCE_NAME / 'longitudinal_characteristics.png')
+        sequence, k=10, save_as=str(CHAR_DIR / SEQUENCE_NAME / 'longitudinal_characteristics.png')
     )
     #other input parameters: pick_ids (list of specific ids), order_by (default 'complexity')
 
@@ -230,7 +227,7 @@ def compute_sequence_characteristics(sequence, SEQUENCE_NAME, STATES_LABELS,cust
     #plotting cross-sectional entropy over time.
     from sequenzo.sequence_characteristics.plot_characteristics import plot_cross_sectional_characteristics
     plot_cross_sectional_characteristics(
-        sequence, save_as=str(ROOT_FOLDER_CHAR / SEQUENCE_NAME / 'cross_sectional_entropy.png')
+        sequence, save_as=str(CHAR_DIR / SEQUENCE_NAME / 'cross_sectional_entropy.png')
     )
 
 
@@ -253,7 +250,7 @@ def compute_sequence_characteristics(sequence, SEQUENCE_NAME, STATES_LABELS,cust
     #[characteristics_by_sequence_df, prop_state_freq_per_sequence_df],
     #axis=1)
     characteristics_by_sequence_df.set_index(sequence_indexes, inplace=True)
-    characteristics_by_sequence_df.to_csv(ROOT_FOLDER_CHAR / SEQUENCE_NAME / 'characteristics_by_sequence.csv', index=True)
+    characteristics_by_sequence_df.to_csv(CHAR_DIR / SEQUENCE_NAME / 'characteristics_by_sequence.csv', index=True)
     
     #characteristics_by_time
     characteristics_by_time_df=pd.DataFrame({
@@ -264,7 +261,7 @@ def compute_sequence_characteristics(sequence, SEQUENCE_NAME, STATES_LABELS,cust
     [characteristics_by_time_df, cross_sectional_entropy_dict['Frequencies']],
     axis=1
     )
-    characteristics_by_time_df.to_csv(ROOT_FOLDER_CHAR / SEQUENCE_NAME / 'characteristics_by_time.csv', index=False)
+    characteristics_by_time_df.to_csv(CHAR_DIR / SEQUENCE_NAME / 'characteristics_by_time.csv', index=False)
 
     ######## SUMMARY TABLE OF CHARACTERISTICS ########
     summary_table = pd.DataFrame(
@@ -323,7 +320,7 @@ def compute_sequence_characteristics(sequence, SEQUENCE_NAME, STATES_LABELS,cust
     )
 
     summary_table.to_latex(
-        ROOT_FOLDER_CHAR / SEQUENCE_NAME / "summary_table_characteristics.tex",
+        CHAR_DIR / SEQUENCE_NAME / "summary_table_characteristics.tex",
         index=False,
         float_format="%.2f",
     )
@@ -337,22 +334,22 @@ def compute_sequence_characteristics(sequence, SEQUENCE_NAME, STATES_LABELS,cust
 
 
 def sequence_visualization_tools(sequence, SEQUENCE_NAME, STATES_LABELS,custom_colors):
-    #create a folder in ROOT_FOLDER_VISUAL for the sequence visualizations if it doesn't exist
-    (ROOT_FOLDER_VISUAL / SEQUENCE_NAME).mkdir(parents=True, exist_ok=True)
+    #create a folder in VISUAL_DIR for the sequence visualizations if it doesn't exist
+    (VISUAL_DIR / SEQUENCE_NAME).mkdir(parents=True, exist_ok=True)
 
     ############### SEQUENCE INDEX PLOT ############
     from sequenzo import plot_sequence_index
     plot_sequence_index(
         sequence,
          sort_by= "unsorted",
-        save_as=str(ROOT_FOLDER_VISUAL / SEQUENCE_NAME / 'sequence_index.png'),
+        save_as=str(VISUAL_DIR / SEQUENCE_NAME / 'sequence_index.png'),
     )
 
     ############## STATE DISTRIBUTION PLOT ############
     from sequenzo import plot_state_distribution
     plot_state_distribution(
         sequence,
-        save_as=str(ROOT_FOLDER_VISUAL / SEQUENCE_NAME / 'state_distribution.png'),
+        save_as=str(VISUAL_DIR / SEQUENCE_NAME / 'state_distribution.png'),
         show=False
     )
 
@@ -360,14 +357,14 @@ def sequence_visualization_tools(sequence, SEQUENCE_NAME, STATES_LABELS,custom_c
     from sequenzo import plot_most_frequent_sequences
     plot_most_frequent_sequences(
         sequence,
-        save_as=str(ROOT_FOLDER_VISUAL / SEQUENCE_NAME / 'most_frequent_sequences.png'),
+        save_as=str(VISUAL_DIR / SEQUENCE_NAME / 'most_frequent_sequences.png'),
     )
 
     ############## MODAL STATE PLOT ############
     from sequenzo import plot_modal_state
     plot_modal_state(
         sequence,
-        save_as=str(ROOT_FOLDER_VISUAL / SEQUENCE_NAME / 'modal_state.png'),
+        save_as=str(VISUAL_DIR / SEQUENCE_NAME / 'modal_state.png'),
     )   
 
     ############## MEAN TIME PLOT #############
@@ -379,7 +376,7 @@ def sequence_visualization_tools(sequence, SEQUENCE_NAME, STATES_LABELS,custom_c
     plot_mean_time(
         sequence,
         title=f'Mean Time in Each State: {SEQUENCE_NAME}',
-        save_as=str(ROOT_FOLDER_VISUAL / SEQUENCE_NAME / 'mean_time.png'),
+        save_as=str(VISUAL_DIR / SEQUENCE_NAME / 'mean_time.png'),
     )
 
     ################# TRANSITION MATRIX PLOT ##############
@@ -392,7 +389,7 @@ def sequence_visualization_tools(sequence, SEQUENCE_NAME, STATES_LABELS,custom_c
     
     plot_transition_matrix(
         sequence,
-        save_as=str(ROOT_FOLDER_VISUAL / SEQUENCE_NAME / 'transition_matrix.png'),
+        save_as=str(VISUAL_DIR / SEQUENCE_NAME / 'transition_matrix.png'),
     )
 
 
@@ -407,7 +404,7 @@ def sequence_visualization_tools(sequence, SEQUENCE_NAME, STATES_LABELS,custom_c
     #     sequence,
     #     distance_matrix
     #     num_groups=20, 
-    #     save_as=str(ROOT_FOLDER_VISUAL / SEQUENCE_NAME / 'relative_frequency.png'),
+    #     save_as=str(VISUAL_DIR / SEQUENCE_NAME / 'relative_frequency.png'),
     # )
     #num_groups is default equal to 12 
 
@@ -418,7 +415,7 @@ def sequence_visualization_tools(sequence, SEQUENCE_NAME, STATES_LABELS,custom_c
     from sequenzo import plot_single_medoid
     # plot_single_medoid(
     #     sequence,
-    #     save_as=str(ROOT_FOLDER_VISUAL / SEQUENCE_NAME / 'single_medoid.png'),
+    #     save_as=str(VISUAL_DIR / SEQUENCE_NAME / 'single_medoid.png'),
     # )
 
 
@@ -427,8 +424,8 @@ def sequence_visualization_tools(sequence, SEQUENCE_NAME, STATES_LABELS,custom_c
 
 ############### SEQUENCE CUSTOM VISUALIZATION TOOLS ############
 def custom_visualization_tools(df, time_cols, SEQUENCE_NAME, STATES_LABELS,custom_colors):
-    #create a folder in ROOT_FOLDER_VISUAL for the custom visualizations if it doesn't exist
-    (ROOT_FOLDER_VISUAL / SEQUENCE_NAME).mkdir(parents=True, exist_ok=True)
+    #create a folder in VISUAL_DIR for the custom visualizations if it doesn't exist
+    (VISUAL_DIR / SEQUENCE_NAME).mkdir(parents=True, exist_ok=True)
 
     ############ TRANSITION RATES MATRIX HEATMAP ############
     import seaborn as sns
@@ -495,7 +492,7 @@ def custom_visualization_tools(df, time_cols, SEQUENCE_NAME, STATES_LABELS,custo
 
     plt.tight_layout()
     plt.savefig(
-        ROOT_FOLDER_VISUAL / SEQUENCE_NAME / "state_transition_rates_heatmap.png",
+        VISUAL_DIR / SEQUENCE_NAME / "state_transition_rates_heatmap.png",
         dpi=300,
         bbox_inches="tight",
     )
@@ -543,7 +540,7 @@ def custom_visualization_tools(df, time_cols, SEQUENCE_NAME, STATES_LABELS,custo
     )
 
     plt.tight_layout()
-    out_dir = ROOT_FOLDER_VISUAL / SEQUENCE_NAME
+    out_dir = VISUAL_DIR / SEQUENCE_NAME
     out_dir.mkdir(parents=True, exist_ok=True)
     plt.savefig(
         out_dir / f"sequence_index_random_{len(sampled)}.png",
@@ -604,7 +601,7 @@ def custom_visualization_tools(df, time_cols, SEQUENCE_NAME, STATES_LABELS,custo
     )
 
     plt.tight_layout()
-    out_dir = ROOT_FOLDER_VISUAL / SEQUENCE_NAME
+    out_dir = VISUAL_DIR / SEQUENCE_NAME
     out_dir.mkdir(parents=True, exist_ok=True)
     plt.savefig(
         out_dir / f"sequence_index_all_{len(df)}.png",
@@ -644,7 +641,7 @@ def custom_visualization_tools(df, time_cols, SEQUENCE_NAME, STATES_LABELS,custo
     ax.margins(x=0)
     ax.legend(loc='center left', bbox_to_anchor=(1.01, 0.5), frameon=False)
     plt.tight_layout()
-    plt.savefig(ROOT_FOLDER_VISUAL/ SEQUENCE_NAME /'state_distribution_without_no.png', dpi=300)
+    plt.savefig(VISUAL_DIR/ SEQUENCE_NAME /'state_distribution_without_no.png', dpi=300)
 
 
     ###STATE DISTRIBUTION PLOT WITHOUT NO STATE ORDERED BY AVERAGE SIZE#####
@@ -667,7 +664,7 @@ def custom_visualization_tools(df, time_cols, SEQUENCE_NAME, STATES_LABELS,custo
     ax.legend(handles[::-1], labels[::-1], loc='center left', bbox_to_anchor=(1.01, 0.5), frameon=False)
 
     plt.tight_layout()
-    plt.savefig(ROOT_FOLDER_VISUAL/ SEQUENCE_NAME /'state_distribution_without_no_ordered.png', dpi=300)
+    plt.savefig(VISUAL_DIR/ SEQUENCE_NAME /'state_distribution_without_no_ordered.png', dpi=300)
     plt.show()
     
     #######LINE PLOT WITHOUT NO STATE ORDERED BY AVERAGE SIZE######
@@ -682,7 +679,7 @@ def custom_visualization_tools(df, time_cols, SEQUENCE_NAME, STATES_LABELS,custo
     ax.grid(True, alpha=0.3)
     ax.legend(loc='center left', bbox_to_anchor=(1.01, 0.5), frameon=False)
     plt.tight_layout()
-    plt.savefig(ROOT_FOLDER_VISUAL/ SEQUENCE_NAME /'state_distribution_lines.png', dpi=300)
+    plt.savefig(VISUAL_DIR/ SEQUENCE_NAME /'state_distribution_lines.png', dpi=300)
 
     # Reorder states: smallest average at the bottom, largest at the top
     order = perc.mean(axis=1).sort_values(ascending=True).index.tolist()
@@ -722,7 +719,7 @@ def custom_visualization_tools(df, time_cols, SEQUENCE_NAME, STATES_LABELS,custo
 
     plt.tight_layout()
     plt.savefig(
-        ROOT_FOLDER_VISUAL / SEQUENCE_NAME / 'state_counts_lines.png',
+        VISUAL_DIR / SEQUENCE_NAME / 'state_counts_lines.png',
         dpi=300,
         bbox_inches='tight',
     )
@@ -760,7 +757,7 @@ def custom_visualization_tools(df, time_cols, SEQUENCE_NAME, STATES_LABELS,custo
     fig.suptitle('State distribution over time', fontsize=16, y=1.02)
     plt.tight_layout()
     plt.savefig(
-        ROOT_FOLDER_VISUAL / SEQUENCE_NAME / 'state_distribution_per_state.png',
+        VISUAL_DIR / SEQUENCE_NAME / 'state_distribution_per_state.png',
         dpi=300, bbox_inches='tight'
     )
 
@@ -771,7 +768,7 @@ def custom_visualization_tools(df, time_cols, SEQUENCE_NAME, STATES_LABELS,custo
         count = (seq_df == state).any(axis=1).sum()
         percentage = (count / len(seq_df)) * 100
         state_distribution_table = pd.concat([state_distribution_table, pd.DataFrame({'State': [STATES_LABELS[state]], 'Count': [count], 'Percentage': [percentage]})], ignore_index=True)
-    state_distribution_table.to_latex(ROOT_FOLDER_VISUAL / SEQUENCE_NAME / 'state_distribution_table.tex', index=False, float_format="%.2f")
+    state_distribution_table.to_latex(VISUAL_DIR / SEQUENCE_NAME / 'state_distribution_table.tex', index=False, float_format="%.2f")
 
     ########### TOTAL COUNTS of cell in each state over all cells (time points*sequence) #############
     counts_total = seq_df.apply(pd.Series.value_counts).fillna(0).sum(axis=1)
@@ -780,7 +777,7 @@ def custom_visualization_tools(df, time_cols, SEQUENCE_NAME, STATES_LABELS,custo
         total_count = counts_total.get(state, 0)
         percentage = (total_count / (len(seq_df) * len(time_cols))) * 100
         count_table = pd.concat([count_table, pd.DataFrame({'State': [STATES_LABELS[state]], 'Total Count': [total_count], 'Percentage': [percentage]})], ignore_index=True)
-    count_table.to_latex(ROOT_FOLDER_VISUAL / SEQUENCE_NAME / 'state_total_count_table.tex', index=False, float_format="%.2f")
+    count_table.to_latex(VISUAL_DIR / SEQUENCE_NAME / 'state_total_count_table.tex', index=False, float_format="%.2f")
 
     ############ SUMMARY TABLE #############
     # 1. Number of non-'NO' events per patient
@@ -827,7 +824,7 @@ def custom_visualization_tools(df, time_cols, SEQUENCE_NAME, STATES_LABELS,custo
 
     # 4. Export to LaTeX
     summary_table.to_latex(
-        ROOT_FOLDER_VISUAL / SEQUENCE_NAME / "summary_table_patients.tex",
+        VISUAL_DIR / SEQUENCE_NAME / "summary_table_patients.tex",
         index=False,
         float_format="%.2f",
     )
@@ -865,13 +862,13 @@ def compute_inertia(distance_matrix, labels_df):
 def perform_clustering(sequence,sequence_ids, distance_matrix):
     #if labels are found in the folder then perform only cluster analysis
     if CLUSTERING in ['hierarchical_clustering','hierarchical_sequenzo']:
-        label_path=ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f"cluster_labels_{DISTANCE_METRIC}_{NUM_CLUSTERS}_{LINKAGE}.csv"
+        label_path=CLUSTER_DIR / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f"cluster_labels_{DISTANCE_METRIC}_{NUM_CLUSTERS}_{LINKAGE}.csv"
         if label_path.exists():
             print(f"Cluster labels already exist for {SEQUENCE_NAME} with {CLUSTERING}, linkage {LINKAGE} and {DISTANCE_METRIC}. Performing only cluster analysis.")
             cluster_labels=pd.read_csv(label_path)
             return  cluster_labels
     else: 
-        label_path=ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f"cluster_labels_{DISTANCE_METRIC}_{NUM_CLUSTERS}.csv"
+        label_path=CLUSTER_DIR / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f"cluster_labels_{DISTANCE_METRIC}_{NUM_CLUSTERS}.csv"
         if label_path.exists():
             print(f"Cluster labels already exist for {SEQUENCE_NAME} with {CLUSTERING} and {DISTANCE_METRIC}. Performing only cluster analysis.")  
             cluster_labels=pd.read_csv(label_path)
@@ -893,8 +890,8 @@ def perform_clustering(sequence,sequence_ids, distance_matrix):
 ## 1) Hierarchical clustering with sequenzo's built-in functions
 
 def hierarchical_clustering(sequence,distance_matrix):
-    #create a folder in ROOT_FOLDER_CLUSTERING for the sequence clustering if it doesn't exist
-    (ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME/CLUSTERING/DISTANCE_METRIC).mkdir(parents=True, exist_ok=True)
+    #create a folder in CLUSTER_DIR for the sequence clustering if it doesn't exist
+    (CLUSTER_DIR / SEQUENCE_NAME/CLUSTERING/DISTANCE_METRIC).mkdir(parents=True, exist_ok=True)
     
     from sequenzo.clustering.hierarchical_clustering import Cluster, ClusterQuality, ClusterResults
     
@@ -903,7 +900,7 @@ def hierarchical_clustering(sequence,distance_matrix):
     cluster = Cluster(matrix=distance_matrix, entity_ids=sequence_ids, clustering_method=LINKAGE)
 
     #Plot the dendogram 
-    cluster.plot_dendrogram(save_as=str(ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f"dendrogram_{DISTANCE_METRIC}_{LINKAGE}.png"), title="Dendogram_" + DISTANCE_METRIC)
+    cluster.plot_dendrogram(save_as=str(CLUSTER_DIR / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f"dendrogram_{DISTANCE_METRIC}_{LINKAGE}.png"), title="Dendogram_" + DISTANCE_METRIC)
 
     #Analyze cluster quality indicators (CQI) to choose the optimal number of clusters
     #TThe function ClusterQuality computes  for each number of clusters k (from 2 to max_clusters) the following metrics:
@@ -921,10 +918,10 @@ def hierarchical_clustering(sequence,distance_matrix):
     #One-line summary of the best k per indicator
     #print(cluster_quality.get_cqi_table())
     #plot the CQI scores
-    cluster_quality.plot_cqi_scores(save_as=str(ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f"cqi_scores_{DISTANCE_METRIC}_{LINKAGE}.png"), title="Cluster Quality Indicators")
+    cluster_quality.plot_cqi_scores(save_as=str(CLUSTER_DIR / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f"cqi_scores_{DISTANCE_METRIC}_{LINKAGE}.png"), title="Cluster Quality Indicators")
     #with norm the type of normalization can be specified (default is "zscore")
     #with metrics_list the metrics to plot can be specified (default is all)
-    cluster_quality.plot_cqi_scores(metrics_list=["ASW","CH","PBC"],save_as=str(ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f"indicators_{DISTANCE_METRIC}_{LINKAGE}.png"), title="ASW and CH Cluster Quality Indicators")
+    cluster_quality.plot_cqi_scores(metrics_list=["ASW","CH","PBC"],save_as=str(CLUSTER_DIR / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f"indicators_{DISTANCE_METRIC}_{LINKAGE}.png"), title="ASW and CH Cluster Quality Indicators")
 
 
     #export cluster results 
@@ -946,7 +943,7 @@ def hierarchical_clustering(sequence,distance_matrix):
     ax.set_xticks(range(2, MAX_CLUSTERS + 1))
     plt.tight_layout()
     plt.savefig(
-        ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME / CLUSTERING / DISTANCE_METRIC / f'elbow_plot_{DISTANCE_METRIC}_{LINKAGE}.png',
+        CLUSTER_DIR / SEQUENCE_NAME / CLUSTERING / DISTANCE_METRIC / f'elbow_plot_{DISTANCE_METRIC}_{LINKAGE}.png',
         dpi=300, bbox_inches='tight'
     )
 
@@ -967,11 +964,11 @@ def hierarchical_clustering(sequence,distance_matrix):
     # Remap the 'Cluster' column with integer labels
     cluster_labels_df['Cluster'] = cluster_labels_df['Cluster'].map(rank_mapping)
     #export cluster labels to csv
-    cluster_labels.to_csv(ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f"cluster_labels_{DISTANCE_METRIC}.csv", index=False)
+    cluster_labels.to_csv(CLUSTER_DIR / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f"cluster_labels_{DISTANCE_METRIC}.csv", index=False)
     #check distribution of cluster labels 
     cluster_distribution=cluster_results.get_cluster_distribution(num_clusters=NUM_CLUSTERS)
     #plot cluster distribution
-    cluster_results.plot_cluster_distribution(num_clusters=NUM_CLUSTERS, save_as=str(ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f"cluster_distribution_{DISTANCE_METRIC}_{LINKAGE}_{NUM_CLUSTERS}.png"), title="Cluster Distribution")
+    cluster_results.plot_cluster_distribution(num_clusters=NUM_CLUSTERS, save_as=str(CLUSTER_DIR / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f"cluster_distribution_{DISTANCE_METRIC}_{LINKAGE}_{NUM_CLUSTERS}.png"), title="Cluster Distribution")
     
     
     #plot sequenzo sequence index plot 
@@ -981,7 +978,7 @@ def hierarchical_clustering(sequence,distance_matrix):
         group_dataframe=cluster_labels,
         group_column_name="Cluster",
         sort_by= "unsorted", #default is lexicographically
-        save_as=str(ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f'index_plot_by_cluster_{DISTANCE_METRIC}_{LINKAGE}_{NUM_CLUSTERS}.png')
+        save_as=str(CLUSTER_DIR / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f'index_plot_by_cluster_{DISTANCE_METRIC}_{LINKAGE}_{NUM_CLUSTERS}.png')
     )
     
 
@@ -991,7 +988,7 @@ def hierarchical_clustering(sequence,distance_matrix):
         sequence,
         group_dataframe=cluster_labels,
         group_column_name="Cluster",
-        save_as=str(ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f'state_distribution_by_cluster_{DISTANCE_METRIC}_{LINKAGE}_{NUM_CLUSTERS}.png'),
+        save_as=str(CLUSTER_DIR / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f'state_distribution_by_cluster_{DISTANCE_METRIC}_{LINKAGE}_{NUM_CLUSTERS}.png'),
         show=False
     )
 
@@ -1102,8 +1099,8 @@ def evaluate_and_plot_cluster_metrics(Z, condensed_distance, distance_matrix, ma
 
 ## 2) Hierarchical clustering with custom implementation using scipy and fastcluster
 def hierarchical_clustering_custom(sequence,sequence_ids, distance_matrix):
-    #create a folder in ROOT_FOLDER_CLUSTERING for the sequence clustering if it doesn't exist
-    (ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME/CLUSTERING/DISTANCE_METRIC).mkdir(parents=True, exist_ok=True)
+    #create a folder in CLUSTER_DIR for the sequence clustering if it doesn't exist
+    (CLUSTER_DIR / SEQUENCE_NAME/CLUSTERING/DISTANCE_METRIC).mkdir(parents=True, exist_ok=True)
     
     from scipy.cluster.hierarchy import linkage, dendrogram, fcluster
     from scipy.spatial.distance import squareform 
@@ -1118,10 +1115,10 @@ def hierarchical_clustering_custom(sequence,sequence_ids, distance_matrix):
     plt.title('Dendrogram')
     plt.xlabel('Cluster size')
     plt.ylabel('Distance')
-    plt.savefig(ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME /CLUSTERING/DISTANCE_METRIC/ f"dendrogram_{DISTANCE_METRIC}_{LINKAGE}.png", dpi=300, bbox_inches='tight')
+    plt.savefig(CLUSTER_DIR / SEQUENCE_NAME /CLUSTERING/DISTANCE_METRIC/ f"dendrogram_{DISTANCE_METRIC}_{LINKAGE}.png", dpi=300, bbox_inches='tight')
 
     #Evaluate and plot validation metrics (Silhouette, PBC, Calinski-Harabasz)
-    eval_plot_path = ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME /CLUSTERING/DISTANCE_METRIC/ f"cluster_evaluation_metrics.png"
+    eval_plot_path = CLUSTER_DIR / SEQUENCE_NAME /CLUSTERING/DISTANCE_METRIC/ f"cluster_evaluation_metrics.png"
     metrics = evaluate_and_plot_cluster_metrics(
         Z=Z,
         condensed_distance=condensed_distance,
@@ -1145,7 +1142,7 @@ def hierarchical_clustering_custom(sequence,sequence_ids, distance_matrix):
     # Remap the 'Cluster' column with integer labels
     cluster_labels_df['Cluster'] = cluster_labels_df['Cluster'].map(rank_mapping)
     #Save cluster labels to CSV
-    cluster_labels_df.to_csv(ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f"cluster_labels_{DISTANCE_METRIC}.csv", index=False)
+    cluster_labels_df.to_csv(CLUSTER_DIR / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f"cluster_labels_{DISTANCE_METRIC}.csv", index=False)
 
     # Compute cut height dynamically based on NUM_CLUSTERS
     # Distances are in the 3rd column (index 2) of linkage matrix Z, sorted in ascending order
@@ -1170,7 +1167,7 @@ def hierarchical_clustering_custom(sequence,sequence_ids, distance_matrix):
     plt.xlabel('Cluster size')
     plt.ylabel('Distance')
     plt.legend()
-    plt.savefig(ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME /CLUSTERING/DISTANCE_METRIC/ f"dendrogram_{DISTANCE_METRIC}_{LINKAGE}.png", dpi=300, bbox_inches='tight')
+    plt.savefig(CLUSTER_DIR / SEQUENCE_NAME /CLUSTERING/DISTANCE_METRIC/ f"dendrogram_{DISTANCE_METRIC}_{LINKAGE}.png", dpi=300, bbox_inches='tight')
 
 
     if sequence is not None:
@@ -1180,7 +1177,7 @@ def hierarchical_clustering_custom(sequence,sequence_ids, distance_matrix):
             group_dataframe=cluster_labels_df,
             group_column_name="Cluster",
             sort_by= "unsorted",
-            save_as=str(ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f'index_plot_by_cluster_{DISTANCE_METRIC}_{LINKAGE}_{NUM_CLUSTERS}.png')
+            save_as=str(CLUSTER_DIR / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f'index_plot_by_cluster_{DISTANCE_METRIC}_{LINKAGE}_{NUM_CLUSTERS}.png')
         )
 
         from sequenzo import plot_state_distribution
@@ -1188,15 +1185,15 @@ def hierarchical_clustering_custom(sequence,sequence_ids, distance_matrix):
             sequence,
             group_dataframe=cluster_labels_df,
             group_column_name="Cluster",
-            save_as=str(ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME /CLUSTERING/DISTANCE_METRIC/ f'state_distribution_by_cluster_{DISTANCE_METRIC}_{LINKAGE}_{NUM_CLUSTERS}.png'),
+            save_as=str(CLUSTER_DIR / SEQUENCE_NAME /CLUSTERING/DISTANCE_METRIC/ f'state_distribution_by_cluster_{DISTANCE_METRIC}_{LINKAGE}_{NUM_CLUSTERS}.png'),
             show=False
         )
     return cluster_labels_df
 
 
 def Kmedoids_clustering(sequence, sequence_ids, distance_matrix):
-    #create a folder in ROOT_FOLDER_CLUSTERING for the sequence clustering if it doesn't exist
-    (ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME/CLUSTERING/DISTANCE_METRIC).mkdir(parents=True, exist_ok=True)
+    #create a folder in CLUSTER_DIR for the sequence clustering if it doesn't exist
+    (CLUSTER_DIR / SEQUENCE_NAME/CLUSTERING/DISTANCE_METRIC).mkdir(parents=True, exist_ok=True)
 
 
     #implement K-medoids clustering using the distance matrix
@@ -1221,7 +1218,7 @@ def Kmedoids_clustering(sequence, sequence_ids, distance_matrix):
     cluster_labels_df['Cluster'] = cluster_labels_df['Cluster'].map(rank_mapping)
     
     #export cluster labels to csv
-    cluster_labels_df.to_csv(ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f"cluster_labels_{DISTANCE_METRIC}.csv", index=False)
+    cluster_labels_df.to_csv(CLUSTER_DIR / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f"cluster_labels_{DISTANCE_METRIC}.csv", index=False)
 
 
     if sequence is not None:
@@ -1232,7 +1229,7 @@ def Kmedoids_clustering(sequence, sequence_ids, distance_matrix):
             group_dataframe=pd_cluster_labels,
             group_column_name="Cluster",
             sort_by= "unsorted", 
-            save_as=str(ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f'index_plot_by_cluster_{DISTANCE_METRIC}_{NUM_CLUSTERS}.png')
+            save_as=str(CLUSTER_DIR / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f'index_plot_by_cluster_{DISTANCE_METRIC}_{NUM_CLUSTERS}.png')
         )
 
         #plot state distribution plot for each cluster 
@@ -1241,7 +1238,7 @@ def Kmedoids_clustering(sequence, sequence_ids, distance_matrix):
             sequence,
             group_dataframe=pd_cluster_labels,
             group_column_name="Cluster",
-            save_as=str(ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f'state_distribution_by_cluster_{DISTANCE_METRIC}_{NUM_CLUSTERS}.png'),
+            save_as=str(CLUSTER_DIR / SEQUENCE_NAME /CLUSTERING /DISTANCE_METRIC/ f'state_distribution_by_cluster_{DISTANCE_METRIC}_{NUM_CLUSTERS}.png'),
             show=False
         )
 
@@ -1254,7 +1251,7 @@ def Kmedoids_clustering(sequence, sequence_ids, distance_matrix):
 ######################################################################################################
         
 def clustering_analysis(df_sequence,cluster_labels,distance_matrix):
-    FOLDER=ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME / CLUSTERING / DISTANCE_METRIC
+    FOLDER=CLUSTER_DIR / SEQUENCE_NAME / CLUSTERING / DISTANCE_METRIC
 
     #create dataset with sequence of states and cluster labels
     df=df_sequence.merge(cluster_labels, left_on='pedianet_id', right_on='Entity ID', how='inner')
@@ -1880,7 +1877,7 @@ def clustering_analysis(df_sequence,cluster_labels,distance_matrix):
 
     plt.tight_layout()
     plt.savefig(
-        ROOT_FOLDER_CLUSTERING
+        CLUSTER_DIR
         / SEQUENCE_NAME
         / CLUSTERING
         / DISTANCE_METRIC
@@ -2013,7 +2010,7 @@ def clustering_analysis(df_sequence,cluster_labels,distance_matrix):
 
     plt.tight_layout()
     plt.savefig(
-        ROOT_FOLDER_CLUSTERING
+        CLUSTER_DIR
         / SEQUENCE_NAME
         / CLUSTERING
         / DISTANCE_METRIC
@@ -2160,7 +2157,7 @@ def clustering_analysis(df_sequence,cluster_labels,distance_matrix):
 
     plt.tight_layout()
     plt.savefig(
-        ROOT_FOLDER_CLUSTERING
+        CLUSTER_DIR
         / SEQUENCE_NAME
         / CLUSTERING
         / DISTANCE_METRIC
@@ -2210,7 +2207,7 @@ def clustering_analysis(df_sequence,cluster_labels,distance_matrix):
     ax.set_ylabel('State')
     plt.tight_layout()
     plt.savefig(
-        ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME / CLUSTERING / DISTANCE_METRIC / f'mean_time_per_state_{DISTANCE_METRIC}_{NUM_CLUSTERS}.png',
+        CLUSTER_DIR / SEQUENCE_NAME / CLUSTERING / DISTANCE_METRIC / f'mean_time_per_state_{DISTANCE_METRIC}_{NUM_CLUSTERS}.png',
         dpi=300, bbox_inches='tight'
     )
 
@@ -2310,7 +2307,7 @@ def cluster_summary_table(df_sequence, cluster_labels ):
     summary = pd.DataFrame(rows).set_index('Cluster').T
 
     # --- Save LaTeX ---
-    summary.to_latex(ROOT_FOLDER_CLUSTERING / SEQUENCE_NAME / CLUSTERING / DISTANCE_METRIC / f'cluster_summary_{DISTANCE_METRIC}_{NUM_CLUSTERS}.tex', index=True)
+    summary.to_latex(CLUSTER_DIR / SEQUENCE_NAME / CLUSTERING / DISTANCE_METRIC / f'cluster_summary_{DISTANCE_METRIC}_{NUM_CLUSTERS}.tex', index=True)
 
     return summary
 
@@ -2367,7 +2364,7 @@ def descriptive_stats_table(df, cluster_labels):
     print(summary)
 
     output_path = (
-        ROOT_FOLDER_CLUSTERING
+        CLUSTER_DIR
         / SEQUENCE_NAME
         / CLUSTERING
         / DISTANCE_METRIC

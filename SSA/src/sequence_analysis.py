@@ -3,9 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 from config import SEQUENCE_NAME, STATES_LABELS, TIME_UNIT, SEQ_LENGTH, COVARIATES, DISTANCE_METRIC, MAX_CLUSTERS, NUM_CLUSTERS, COSTS,CUSTOM_COLORS, CLUSTERING, LINKAGE
-
-
-ROOT = Path(__file__).resolve().parent.parent.parent
+from config import ROOT, DATASETS_DIR
 
 import sys
 sys.setrecursionlimit(20000)
@@ -21,7 +19,7 @@ def run_sequence_analysis():
 
 
     #import dataset with sequences
-    df=pd.read_csv(ROOT/'SSA'/'datasets'/ f'{SEQUENCE_NAME}.csv')
+    df=pd.read_csv(DATASETS_DIR/ f'{SEQUENCE_NAME}.csv')
     time_cols=[df.columns[i] for i in range(len(df.columns)) if df.columns[i].isdigit()]
     df_sequence=df[['pedianet_id'] + time_cols]
 

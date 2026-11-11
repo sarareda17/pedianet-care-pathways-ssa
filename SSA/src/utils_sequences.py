@@ -2,8 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
-ROOT = Path(__file__).resolve().parent.parent.parent
-ROOT_FOLDER_EXPLORATION = ROOT/'SSA'/'results'/'exploration'
+from config import ROOT, EXPLORATION_DIR, DATASETS_DIR
 
 #function to get all icd9 codes that start with the given prefixes in the dataset
 def get_icd9(prefixes, dataset):
@@ -67,7 +66,7 @@ def dataset_preprocessing(patients,dataset,col_date,col_state, states, time_unit
     print(f"Number of patients after selecting those with at least one event: {len(patients_sequences)}")
     
     #save selected patients
-    patients_sequences.to_csv(ROOT/'SSA'/'datasets'/f'selected_patients_diagnoses.csv', index=False)
+    patients_sequences.to_csv(DATASETS_DIR/f'selected_patients_diagnoses.csv', index=False)
 
     return patients_sequences,dataset
 
@@ -140,7 +139,7 @@ def dataset_preprocessing_season(patients,dataset,col_date,col_state, states, ti
     print(f"Number of patients after selecting those with at least one event: {len(patients_sequences)}")
 
     #save selected patients
-    patients_sequences.to_csv(ROOT/'SSA'/'datasets'/f'selected_patients_diagnoses_season_{YEARS}.csv', index=False)
+    patients_sequences.to_csv(DATASETS_DIR/f'selected_patients_diagnoses_season_{YEARS}.csv', index=False)
 
     return patients_sequences,dataset
 
@@ -200,8 +199,8 @@ def create_dataset_sequences(patients_sequences,dataset_preprocessed, seq_length
 
 #function to explore the preprocessed dataset and save the results in the exploration folder
 def explore_dataset_preprocessed(patients,patients_sequences, dataset, dataset_preprocessed, SEQUENCE_NAME,SEASON):
-    #create a folder in ROOT_FOLDER_EXPLORATION with the name of the sequence if it doesn't exist
-    (ROOT_FOLDER_EXPLORATION / SEQUENCE_NAME).mkdir(parents=True, exist_ok=True)
+    #create a folder in EXPLORATION_DIR with the name of the sequence if it doesn't exist
+    (EXPLORATION_DIR / SEQUENCE_NAME).mkdir(parents=True, exist_ok=True)
     
     n_patients_total = patients['pedianet_id'].nunique()
     n_patients_selected = patients_sequences['pedianet_id'].nunique()
@@ -293,8 +292,8 @@ def explore_dataset_preprocessed(patients,patients_sequences, dataset, dataset_p
             'Percentage': f"{n_outliers / n_patients_selected * 100:.2f}%"
         },
     ])
-    summary_data_preprocessing_df.to_csv(ROOT_FOLDER_EXPLORATION / SEQUENCE_NAME / 'summary_preprocessing.csv', index=False)
-    summary_data_preprocessing_df.to_latex(ROOT_FOLDER_EXPLORATION / SEQUENCE_NAME / 'summary_preprocessing.tex', index=False)
+    summary_data_preprocessing_df.to_csv(EXPLORATION_DIR / SEQUENCE_NAME / 'summary_preprocessing.csv', index=False)
+    summary_data_preprocessing_df.to_latex(EXPLORATION_DIR / SEQUENCE_NAME / 'summary_preprocessing.tex', index=False)
 
     #plot number of events per patient in the preprocessed dataset
     plt.figure(figsize=(10,6))
@@ -302,7 +301,7 @@ def explore_dataset_preprocessed(patients,patients_sequences, dataset, dataset_p
     plt.xlabel('Number of Events')
     plt.ylabel('Frequency')
     plt.title('Distribution of Number of Events per Patient in the Preprocessed Dataset')
-    plt.savefig(ROOT_FOLDER_EXPLORATION / SEQUENCE_NAME / 'events_per_patient_preprocessed.png')
+    plt.savefig(EXPLORATION_DIR / SEQUENCE_NAME / 'events_per_patient_preprocessed.png')
 
     #plot number of events per time unit in the preprocessed dataset
     plt.figure(figsize=(10,6))
@@ -310,7 +309,7 @@ def explore_dataset_preprocessed(patients,patients_sequences, dataset, dataset_p
     plt.xlabel('Time Unit')
     plt.ylabel('Number of Events')
     plt.title('Number of Events per Time Unit in the Preprocessed Dataset')
-    plt.savefig(ROOT_FOLDER_EXPLORATION / SEQUENCE_NAME / 'events_per_time_unit.png') 
+    plt.savefig(EXPLORATION_DIR / SEQUENCE_NAME / 'events_per_time_unit.png') 
 
     #boxplot of number of events per patient in the preprocessed dataset
     plt.figure(figsize=(10,6))
@@ -318,7 +317,7 @@ def explore_dataset_preprocessed(patients,patients_sequences, dataset, dataset_p
     plt.xlabel('Patients')
     plt.ylabel('Number of Events')
     plt.title('Boxplot of Number of Events per Patient in the Preprocessed Dataset')
-    plt.savefig(ROOT_FOLDER_EXPLORATION / SEQUENCE_NAME / 'boxplot_events_per_patient_preprocessed.png') 
+    plt.savefig(EXPLORATION_DIR / SEQUENCE_NAME / 'boxplot_events_per_patient_preprocessed.png') 
 
     
     #plot mean number of events per patient per time unit in the preprocessed dataset
@@ -327,7 +326,7 @@ def explore_dataset_preprocessed(patients,patients_sequences, dataset, dataset_p
     plt.xlabel('Time Unit')
     plt.ylabel('Mean Number of Events')
     plt.title('Mean Number of Events per Patient per Time Unit')
-    plt.savefig(ROOT_FOLDER_EXPLORATION / SEQUENCE_NAME / 'mean_events_per_patient_per_time_unit.png')
+    plt.savefig(EXPLORATION_DIR / SEQUENCE_NAME / 'mean_events_per_patient_per_time_unit.png')
     
     #plot max number of events per patient per time unit in the preprocessed dataset
     plt.figure(figsize=(10,6))
@@ -335,7 +334,7 @@ def explore_dataset_preprocessed(patients,patients_sequences, dataset, dataset_p
     plt.xlabel('Time Unit')
     plt.ylabel('Max Number of Events')
     plt.title('Max Number of Events per Patient per Time Unit')
-    plt.savefig(ROOT_FOLDER_EXPLORATION / SEQUENCE_NAME / 'max_events_per_patient_per_time_unit.png')
+    plt.savefig(EXPLORATION_DIR / SEQUENCE_NAME / 'max_events_per_patient_per_time_unit.png')
 
     #plot distribution of states in the preprocessed dataset
     plt.figure(figsize=(10,6))
@@ -344,11 +343,11 @@ def explore_dataset_preprocessed(patients,patients_sequences, dataset, dataset_p
     plt.xlabel('State')
     plt.ylabel('Frequency')
     plt.title('Distribution of States in the Preprocessed Dataset')
-    plt.savefig(ROOT_FOLDER_EXPLORATION / SEQUENCE_NAME / 'distribution_states_preprocessed.png')
+    plt.savefig(EXPLORATION_DIR / SEQUENCE_NAME / 'distribution_states_preprocessed.png')
     #save in latex format the distribution of states in the preprocessed dataset
     state_distribution_df = dataset_preprocessed['state_label'].value_counts().reset_index()
     state_distribution_df.columns = ['State', 'Frequency']
-    state_distribution_df.to_latex(ROOT_FOLDER_EXPLORATION / SEQUENCE_NAME / 'distribution_states_preprocessed.tex', index=False)
+    state_distribution_df.to_latex(EXPLORATION_DIR / SEQUENCE_NAME / 'distribution_states_preprocessed.tex', index=False)
 
     #plot number of patients with at least one event per time-unit
     plt.figure(figsize=(10,6))
@@ -357,7 +356,7 @@ def explore_dataset_preprocessed(patients,patients_sequences, dataset, dataset_p
     plt.xlabel('Time Unit')
     plt.ylabel('Number of Patients')
     plt.title('Number of Patients with at least one diagnosis for each time unit')
-    plt.savefig(ROOT_FOLDER_EXPLORATION / SEQUENCE_NAME / 'patients_per_time_unit.png')
+    plt.savefig(EXPLORATION_DIR / SEQUENCE_NAME / 'patients_per_time_unit.png')
 
 
 
@@ -367,7 +366,7 @@ def explore_dataset_preprocessed(patients,patients_sequences, dataset, dataset_p
     plt.xlabel('Time Unit')
     plt.ylabel('Number of Patients with More than One Event')
     plt.title('Number of Patients with two or more Events for Each Time Unit')
-    plt.savefig(ROOT_FOLDER_EXPLORATION / SEQUENCE_NAME / 'patients_with_more_than_one_event_per_time_unit.png')
+    plt.savefig(EXPLORATION_DIR / SEQUENCE_NAME / 'patients_with_more_than_one_event_per_time_unit.png')
     
     
 
@@ -384,7 +383,7 @@ def explore_dataset_preprocessed(patients,patients_sequences, dataset, dataset_p
     plt.xlabel('Time Unit')
     plt.ylabel('Percentage of Patients (%)')
     plt.title('Percentage of Patients with two or more different events for each time units')
-    plt.savefig(ROOT_FOLDER_EXPLORATION / SEQUENCE_NAME / 'percentage_patients_with_more_than_one_different_event_per_time_unit.png',bbox_inches='tight')
+    plt.savefig(EXPLORATION_DIR / SEQUENCE_NAME / 'percentage_patients_with_more_than_one_different_event_per_time_unit.png',bbox_inches='tight')
 
     # Plot the percentage of multi-event patients among active patients (with >= 1 event) per time unit
     plt.figure(figsize=(10, 6))
@@ -398,7 +397,7 @@ def explore_dataset_preprocessed(patients,patients_sequences, dataset, dataset_p
     plt.xlabel('Time Unit')
     plt.ylabel('Percentage of Active Patients (%)')
     plt.title('Percentage of Patients with two or more different events among active patients for each time unit')
-    plt.savefig(ROOT_FOLDER_EXPLORATION / SEQUENCE_NAME / 'percentage_active_patients_with_more_than_one_different_event_per_time_unit.png',bbox_inches='tight')
+    plt.savefig(EXPLORATION_DIR / SEQUENCE_NAME / 'percentage_active_patients_with_more_than_one_different_event_per_time_unit.png',bbox_inches='tight')
     
     #plot number of patients with two or more different events for each time unit in the preprocessed dataset
     plt.figure(figsize=(10,6))
@@ -406,7 +405,7 @@ def explore_dataset_preprocessed(patients,patients_sequences, dataset, dataset_p
     plt.xlabel('Time Unit')
     plt.ylabel('Number of Patients')
     plt.title('Number of Patients with two or more different events for each time unit')
-    plt.savefig(ROOT_FOLDER_EXPLORATION / SEQUENCE_NAME / 'patients_with_more_than_one_different_event_per_time_unit.png')
+    plt.savefig(EXPLORATION_DIR / SEQUENCE_NAME / 'patients_with_more_than_one_different_event_per_time_unit.png')
 
     #plot number of patients with more than two events for each time unit in the preprocessed dataset
     plt.figure(figsize=(10,6))
@@ -414,7 +413,7 @@ def explore_dataset_preprocessed(patients,patients_sequences, dataset, dataset_p
     plt.xlabel('Time Unit')
     plt.ylabel('Number of Patients with More than Two Events')
     plt.title('Number of Patients with More than Two Events for Each Time Unit')
-    plt.savefig(ROOT_FOLDER_EXPLORATION / SEQUENCE_NAME / 'patients_with_more_than_two_events_per_time_unit.png')
+    plt.savefig(EXPLORATION_DIR / SEQUENCE_NAME / 'patients_with_more_than_two_events_per_time_unit.png')
 
     #plot number of patients with three or more different events for each time unit in the preprocessed dataset
     plt.figure(figsize=(10,6))
@@ -422,7 +421,7 @@ def explore_dataset_preprocessed(patients,patients_sequences, dataset, dataset_p
     plt.xlabel('Time Unit')
     plt.ylabel('Number of Patients with More than Two Different Events')
     plt.title('Number of Patients with More than Two Different Events for Each Time Unit')
-    plt.savefig(ROOT_FOLDER_EXPLORATION / SEQUENCE_NAME / 'patients_with_more_than_two_different_events_per_time_unit.png')
+    plt.savefig(EXPLORATION_DIR / SEQUENCE_NAME / 'patients_with_more_than_two_different_events_per_time_unit.png')
 
     if SEASON:
         #plot age distribution at the start of the sequence for the preprocessed dataset
@@ -432,7 +431,7 @@ def explore_dataset_preprocessed(patients,patients_sequences, dataset, dataset_p
         plt.xlabel('Age at Start of Sequence (months)')
         plt.ylabel('Frequency')
         plt.title('Age Distribution at Start of Sequence for the Preprocessed Dataset')
-        plt.savefig(ROOT_FOLDER_EXPLORATION / SEQUENCE_NAME / 'age_distribution_start_sequence.png')
+        plt.savefig(EXPLORATION_DIR / SEQUENCE_NAME / 'age_distribution_start_sequence.png')
         
 
         #plot age distribution at the end of the sequence for the preprocessed dataset
@@ -442,7 +441,7 @@ def explore_dataset_preprocessed(patients,patients_sequences, dataset, dataset_p
         plt.xlabel('Age at End of Sequence (months)')
         plt.ylabel('Frequency')
         plt.title('Age Distribution at End of Sequence for the Preprocessed Dataset')
-        plt.savefig(ROOT_FOLDER_EXPLORATION / SEQUENCE_NAME / 'age_distribution_end_sequence.png')
+        plt.savefig(EXPLORATION_DIR / SEQUENCE_NAME / 'age_distribution_end_sequence.png')
     
 
 

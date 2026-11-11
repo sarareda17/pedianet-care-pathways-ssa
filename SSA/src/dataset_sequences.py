@@ -3,8 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 from utils_sequences import get_icd9, get_atc, select_events, dataset_preprocessing,dataset_preprocessing_other, explore_dataset_preprocessed,create_dataset_sequences,dataset_preprocessing_season,dataset_preprocessing_other_season
-from config import TIME_UNIT, SEQ_LENGTH, COL_DATE, COL_STATE, SEQUENCE_NAME,COVARIATES, DATASET_PATH, CHANNEL,SEASON,MONTHS, YEARS, STATE_PRIORITY
-ROOT = Path(__file__).resolve().parent.parent.parent
+from config import TIME_UNIT, SEQ_LENGTH, SEQUENCE_NAME,COVARIATES , CHANNEL,SEASON,MONTHS, YEARS, STATE_PRIORITY
+from config import DATASET_PATH, COL_DATE, COL_STATE, DATA_DIR, DATASETS_DIR
 
 def build_dataset():
     """
@@ -13,14 +13,14 @@ def build_dataset():
     """
 
     #import patients dataset
-    patients=pd.read_excel(ROOT/'data'/'pazienti.xlsx')
+    patients=pd.read_excel(DATA_DIR/'pazienti.xlsx')
     #import dataset from which to extract the information to build the sequences
     #excel file 
     if DATASET_PATH.endswith('.xlsx'):
-        dataset=pd.read_excel(ROOT/'data'/DATASET_PATH)
+        dataset=pd.read_excel(DATA_DIR/DATASET_PATH)
     #csv file
     elif DATASET_PATH.endswith('.csv'):
-        dataset=pd.read_csv(ROOT/'data'/DATASET_PATH)
+        dataset=pd.read_csv(DATA_DIR/DATASET_PATH)
 
     #define states based on the selected channel and the corresponding codes
     if CHANNEL=='diagnoses' or CHANNEL=='diagnoses_season':
@@ -246,29 +246,29 @@ def build_dataset():
     #new dataset with only selected events
     print(type(STATES))
     dataset_events=select_events(dataset, STATES, COL_STATE)
-    dataset_events.to_csv(ROOT/'SSA'/'datasets'/f'{CHANNEL}_breath.csv', index=False)
+    dataset_events.to_csv(DATASETS_DIR/f'{CHANNEL}_breath.csv', index=False)
 
     #preprocess the dataset to keep only useful info and select patients cohort
     if SEASON:
         if CHANNEL=='diagnoses_season'  or CHANNEL=='macrodiagnoses_season':
             patients_sequences, dataset_preprocessed = dataset_preprocessing_season(patients, dataset, COL_DATE, COL_STATE, STATES, TIME_UNIT, SEQ_LENGTH,CHANNEL,MONTHS,YEARS)
         else:
-            selected_patients=pd.read_csv(ROOT/'SSA'/'datasets'/f'selected_patients_diagnoses_season_{YEARS}.csv')
+            selected_patients=pd.read_csv(DATASETS_DIR/f'selected_patients_diagnoses_season_{YEARS}.csv')
             patients_sequences,dataset_preprocessed = dataset_preprocessing_other_season(selected_patients, dataset_events, COL_DATE, COL_STATE, STATES, TIME_UNIT, SEQ_LENGTH,CHANNEL,MONTHS,YEARS)
     else:
         if CHANNEL=='diagnoses'  or CHANNEL=='macrodiagnoses':
             patients_sequences, dataset_preprocessed = dataset_preprocessing(patients, dataset, COL_DATE, COL_STATE, STATES, TIME_UNIT, SEQ_LENGTH,CHANNEL)
         else:
-            selected_patients=pd.read_csv(ROOT/'SSA'/'datasets'/f'selected_patients_diagnoses.csv')
+            selected_patients=pd.read_csv(DATASETS_DIR/f'selected_patients_diagnoses.csv')
             patients_sequences,dataset_preprocessed = dataset_preprocessing_other(selected_patients, dataset_events, COL_DATE, COL_STATE, STATES, TIME_UNIT, SEQ_LENGTH,CHANNEL)
-    dataset_preprocessed.to_csv(ROOT/'SSA'/'datasets'/f'{CHANNEL}_preprocessed.csv', index=False)
+    dataset_preprocessed.to_csv(DATASETS_DIR/f'{CHANNEL}_preprocessed.csv', index=False)
 
     #explore the preprocessed dataset
     summary_df=explore_dataset_preprocessed(patients, patients_sequences, dataset, dataset_preprocessed,SEQUENCE_NAME,SEASON)
 
     #create the dataset to build the sequences and save it
     dataset_sequences=create_dataset_sequences(patients_sequences,dataset_preprocessed, SEQ_LENGTH,COVARIATES, STATE_PRIORITY)
-    dataset_sequences.to_csv(ROOT/'SSA'/'datasets'/ f'{SEQUENCE_NAME}.csv', index=False)
+    dataset_sequences.to_csv(DATASETS_DIR/ f'{SEQUENCE_NAME}.csv', index=False)
 
     return dataset_sequences
 

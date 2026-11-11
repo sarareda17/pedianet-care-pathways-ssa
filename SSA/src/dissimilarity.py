@@ -7,18 +7,15 @@
 
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 from config import STATES_LABELS,COSTS
-import sequenzo
-from pathlib import Path
-ROOT = Path(__file__).resolve().parent.parent.parent
+from config import DISSIM_DIR
 
 ################################## MAIN FUNCTIONS ##########################################
 #main functions to get the dissimilarity matrix, either loading it from a file if it exists 
 #or computing it if it doesn't
 
 def get_dissimilarity_matrix(metric,sequence, df_sequence,SEQUENCE_NAME):
-    dissimilarity_path=ROOT / "SSA" / "results" / "sequences"/"sequence_dissimilarities"/f"{SEQUENCE_NAME}_{metric}.npy"
+    dissimilarity_path=DISSIM_DIR/f"{SEQUENCE_NAME}_{metric}.npy"
     if dissimilarity_path.exists():
         print(f"Loading precomputed distance matrix for {metric}...")
         dist=np.load(dissimilarity_path)
@@ -121,7 +118,7 @@ def compute_dissimilarity_matrix(metric,sequence, df_sequence,SEQUENCE_NAME):
     if hasattr(dist, 'values'):
         dist = dist.values
     dist = np.asarray(dist)
-    np.save(ROOT / "SSA" / "results" / "sequences"/"sequence_dissimilarities"/f"{SEQUENCE_NAME}_{metric}.npy", dist)
+    np.save(DISSIM_DIR/f"{SEQUENCE_NAME}_{metric}.npy", dist)
     return dist
 
 
