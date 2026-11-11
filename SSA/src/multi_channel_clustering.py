@@ -12,6 +12,8 @@ from config import SEASON, SEQUENCE_NAME_0, SEQUENCE_NAME_1, SEQUENCE_NAME_2, SE
 from config import DISTANCE_METRIC,DISTANCE_METRIC_1, DISTANCE_METRIC_2, DISTANCE_METRIC_3
 from config import W_0,W_1,W_2,W_3
 
+ROOT_DISSIMILARITY=ROOT/'SSA'/'results'/'sequences'/'sequence_dissimilarities'
+
 def running_multichannel_clustering():
     """
     Executes multichannel clustering:
@@ -38,29 +40,47 @@ def running_multichannel_clustering():
         normalized_matrix = (dist_matrix - min_val) / (max_val - min_val)
         return normalized_matrix
 
+    #initialize pooled distance matrix
+    pooled_dist=np.zeros((len(ids), len(ids)))
 
     #Pooled distance matrix
     for i in range(NUM_CHANNELS):
         if i==0:
             print(f'Loading distance matrix for channel {i} with sequence {SEQUENCE_NAME_0} and distance metric {DISTANCE_METRIC}')
-            pooled_dist=np.load(ROOT/'SSA'/'results'/'sequences'/'sequence_dissimilarities'/ f'{SEQUENCE_NAME_0}_{DISTANCE_METRIC}.npy')
-            dist0=normalize_distance_matrix(pooled_dist)
-            dist=W_0*dist0   
+            path_0=ROOT_DISSIMILARITY/ f'{SEQUENCE_NAME_0}_{DISTANCE_METRIC}.npy'
+            #warning if path doesnot exist
+            if not path_0.exists():
+                raise FileNotFoundError(f"Distance matrix file not found: {path_0}")
+            dist_0=np.load(path_0)
+            dist0=normalize_distance_matrix(dist_0)
+            pooled_dist+=W_0*dist0   
         elif i==1:
             print(f'Loading distance matrix for channel {i} with sequence {SEQUENCE_NAME_1} and distance metric {DISTANCE_METRIC_1}')
-            pooled_dist+=np.load(ROOT/'SSA'/'results'/'sequences'/'sequence_dissimilarities'/ f'{SEQUENCE_NAME_1}_{DISTANCE_METRIC_1}.npy')
-            dist1=normalize_distance_matrix(pooled_dist)
-            dist+=W_1*dist1
+            path_1=ROOT_DISSIMILARITY/ f'{SEQUENCE_NAME_1}_{DISTANCE_METRIC_1}.npy'
+            #warning if path doesnot exist
+            if not path_1.exists():
+                raise FileNotFoundError(f"Distance matrix file not found: {path_1}")
+            dist_1=np.load(path_1)
+            dist1=normalize_distance_matrix(dist_1)
+            pooled_dist+=W_1*dist1
         elif i==2:
             print(f'Loading distance matrix for channel {i} with sequence {SEQUENCE_NAME_2} and distance metric {DISTANCE_METRIC_2}')
-            pooled_dist+=np.load(ROOT/'SSA'/'results'/'sequences'/'sequence_dissimilarities'/ f'{SEQUENCE_NAME_2}_{DISTANCE_METRIC_2}.npy')
-            dist2=normalize_distance_matrix(pooled_dist)
-            dist+=W_2*dist2
+            path_2=ROOT_DISSIMILARITY/ f'{SEQUENCE_NAME_2}_{DISTANCE_METRIC_2}.npy'
+            #warning if path doesnot exist
+            if not path_2.exists():
+                raise FileNotFoundError(f"Distance matrix file not found: {path_2}")
+            dist_2=np.load(path_2)
+            dist2=normalize_distance_matrix(dist_2)
+            pooled_dist+=W_2*dist2
         elif i==3:
             print(f'Loading distance matrix for channel {i} with sequence {SEQUENCE_NAME_3} and distance metric {DISTANCE_METRIC_3}')
-            pooled_dist+=np.load(ROOT/'SSA'/'results'/'sequences'/'sequence_dissimilarities'/ f'{SEQUENCE_NAME_3}_{DISTANCE_METRIC_3}.npy')
-            dist3=normalize_distance_matrix(pooled_dist)
-            dist+=W_3*dist3
+            path_3=ROOT_DISSIMILARITY/ f'{SEQUENCE_NAME_3}_{DISTANCE_METRIC_3}.npy'
+            #warning if path doesnot exist
+            if not path_3.exists():
+                raise FileNotFoundError(f"Distance matrix file not found: {path_3}")
+            dist_3=np.load(path_3)
+            dist3=normalize_distance_matrix(dist_3)
+            pooled_dist+=W_3*dist3
         else:
             raise ValueError("Invalid channel index")
 

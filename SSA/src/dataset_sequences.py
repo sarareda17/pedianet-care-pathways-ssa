@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np 
 import matplotlib.pyplot as plt
 from pathlib import Path
-from utils import get_icd9, get_atc, select_events, dataset_preprocessing,dataset_preprocessing_other, explore_dataset_preprocessed,create_dataset_sequences,dataset_preprocessing_season,dataset_preprocessing_other_season
+from utils_sequences import get_icd9, get_atc, select_events, dataset_preprocessing,dataset_preprocessing_other, explore_dataset_preprocessed,create_dataset_sequences,dataset_preprocessing_season,dataset_preprocessing_other_season
 from config import TIME_UNIT, SEQ_LENGTH, COL_DATE, COL_STATE, SEQUENCE_NAME,COVARIATES, DATASET_PATH, CHANNEL,SEASON,MONTHS, YEARS, STATE_PRIORITY
 ROOT = Path(__file__).resolve().parent.parent.parent
 

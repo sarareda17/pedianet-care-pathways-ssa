@@ -3,8 +3,38 @@
 ################################################################################################################
 #This file contains the configuration parameters for the state sequence analysis. 
 # It defines the channels, their specific parameters, and other settings for the analysis.
+#
+# CONTENTS OF THIS FILE
+#   1. CHANNELS SET-UP
+#        - `channels` dictionary: for each channel it defines the dataset file,
+#          the state/date columns, the covariates, the state labels, the state priority,
+#          the colors and the substitution costs
+#        - active channel(s) (CHANNEL, CHANNEL_1..3) and multichannel setting
+#          (MULTICHANNEL, NUM_CHANNELS, channel weights W_0..W_3)
+#   2. SEQUENCE PARAMETERS
+#        - alignment (SEASON: by season or by age)
+#        - time granularity (TIME_UNIT, MONTHS) and sequence length (SEQ_LENGTH, YEARS)
+#        - alphabet (STATES_LABELS) and state priority for overlapping events (STATE_PRIORITY)
+#   3. SEQUENCE DATA CONTENT
+#        - dataset path (DATASET_PATH)
+#        - column names (COL_ID, COL_DATE, COL_STATE) and covariates (COVARIATES)
+#   4. SEQUENCE VISUALIZATION & RESULTS PATH
+#        - color utilities and color palettes (CUSTOM_COLORS..)
+#        - sequence names used to save/load results (SEQUENCE_NAME..)
+#   5. SEQUENCE DISSIMILARITY AND CLUSTERING
+#        - fixed substitution costs (COSTS)
+#        - dissimilarity measure (DISTANCE_METRIC..)
+#        - clustering algorithm (CLUSTERING), linkage (LINKAGE)
+#        - number of clusters (MAX_CLUSTERS, NUM_CLUSTERS)
+#   6. SEQUENCE-BASED RISK PREDICTION MODELING
+#        - prediction target (PRED_NAME), features (FEATURES, CAT_FEATURES)
+#        - model (MODEL), stratification variable (STRATA)
+#        - multichannel clusters in prediction (FLAG)
+#
 
-#---- ALL CHANNELS DICTIONARIES WITH PARAMETERS ----
+##########################################################################################
+################################ 1. CHANNELS SET-UP ######################################
+##########################################################################################
 channels={
     #DIAGNOSES SEQUENCES specific parameters
     'diagnoses': {
@@ -248,27 +278,27 @@ channels={
 
 # ---- SEQUENCE CHANNELS ----
 #options: 'diagnoses','macrodiagnoses', 'supermacrodiagnoses','drugs','secondary_care','health'
-CHANNEL='secondary_care'
+CHANNEL='macrodiagnoses'
 CHANNEL_1='drugs' 
 CHANNEL_2='secondary_care' 
 CHANNEL_3='health'
    
 
 #---- MULTICHANNEL SETTING ----
-#Multichannel flag: if True the anlysis will consider NUM_CHANNELS channels
+#Multichannel flag: if True the analysis will consider NUM_CHANNELS channels
                    #if False, the analysis will consider only the CHANNEL channel
 MULTICHANNEL=False
 NUM_CHANNELS=3  
 
-#Weights assigned to each channel in the multichannel analysis, they must sum to 1.0
-W_0=0.8 #weight for channel 0
-W_1=0.2  #weight for channel 1
-W_2=1.0  #weight for channel 2
-W_3=1.0  #weight for channel 3
+#Weights assigned to each channel in the multichannel analysis
+W_0=1 #weight for channel 0
+W_1=1 #weight for channel 1
+W_2=1  #weight for channel 2
+W_3=1  #weight for channel 3
 
 
 ##########################################################################################
-################################ SEQUENCE PARAMETERS #####################################
+################################ 2. SEQUENCE PARAMETERS ##################################
 ##########################################################################################
 
 #---- SEQUENCES ALIGNMENT OPTION/CHOICE ----
@@ -311,7 +341,7 @@ STATE_PRIORITY = channels[CHANNEL]['state_priority']
 
 
 ##########################################################################################
-################################ SEQUENCE DATA CONTENT ###################################
+################################ 3. SEQUENCE DATA CONTENT ################################
 ##########################################################################################
 
 # ---- DATA ROOT DIRECTORY ----
@@ -332,7 +362,7 @@ COVARIATES=channels[CHANNEL]['covariates']
 
 
 ##########################################################################################
-##############################SEQUENCE VISUALIZATION & RESULTS PATH ######################
+############################ 4.SEQUENCE VISUALIZATION & RESULTS PATH #####################
 ##########################################################################################
 
 
@@ -379,7 +409,7 @@ def make_custom_colors(states_labels: dict) -> list:
             
     return colors
 
-#if colors are defined in the channels dictiornary
+#if colors are defined in the channels dictionary
 def get_channel_colors(channel_name: str) -> list:
     cfg = channels[channel_name]
     labels = cfg['states_labels']
@@ -397,7 +427,7 @@ CUSTOM_COLORS_2 = get_channel_colors(CHANNEL_2)
 CUSTOM_COLORS_3 = get_channel_colors(CHANNEL_3)
 
 
-# ---- SEQUENCE NAME PATH ----
+# ---- SEQUENCE NAME ----
 #rename channels if season is true
 if SEASON:
     suffix = '_season' 
@@ -415,9 +445,28 @@ SEQUENCE_NAME_1 = f'seq_{CHANNEL_1}_{TIME_UNIT_1}_{SEQ_LENGTH_1}'
 SEQUENCE_NAME_2 = f'seq_{CHANNEL_2}_{TIME_UNIT_2}_{SEQ_LENGTH_2}'
 SEQUENCE_NAME_3 = f'seq_{CHANNEL_3}_{TIME_UNIT_3}_{SEQ_LENGTH_3}'
 
+# --- RESULTS PATH ----
+#path to the directory where the results will be stored
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+DATA_DIR        = ROOT / 'data'
+DATASETS_DIR    = ROOT / 'SSA' / 'datasets'
+RESULTS_DIR     = ROOT / 'SSA' / 'results'
+SEQ_RESULTS_DIR = RESULTS_DIR / 'sequences'
+EXPLORATION_DIR = RESULTS_DIR / 'exploration'
+CHAR_DIR        = SEQ_RESULTS_DIR / 'sequence_characteristics'
+VISUAL_DIR      = SEQ_RESULTS_DIR / 'sequence_visualizations'
+CLUSTERING_DIR  = SEQ_RESULTS_DIR / 'sequence_clustering'
+DISSIM_DIR      = SEQ_RESULTS_DIR / 'sequence_dissimilarities'
+PRED_DIR        = ROOT / 'SSA' / 'prediction'
+
+for d in (DATASETS_DIR, EXPLORATION_DIR, CHAR_DIR, VISUAL_DIR, CLUSTERING_DIR, DISSIM_DIR, PRED_DIR):
+    d.mkdir(parents=True, exist_ok=True)
+
 
 ##########################################################################################
-######################### SEQUENCE DISSIMILARITY AND CLUSTEIRNG ##########################
+######################### 5. SEQUENCE DISSIMILARITY AND CLUSTERING #######################
 ##########################################################################################
 
 #----- COSTS BETWEEN STATES ----
@@ -426,16 +475,14 @@ COSTS= channels[CHANNEL]['costs']
 
 #---- DISSIMILARITY MEASURES ----
 # The following dissimilarity measures are available:
-#'OM' = Optimal Matching, 
-# OM_CONSTANT = Optimal Matching with constant substitution costs, 
-# 'OM_DIAG' = Optimal Matching with diagonal substitution costs, 
-#'HAM' = Hamming distance, 
-# 'HAM_CONSTANT' = Hamming distance with constant substitution costs, 
-#'DHAM' = Dynamic Hamming distance, 
-# 'LCS' = Longest Common Subsequence
+#'OM_CONST', 'OM_TRATE', 'OM_EMBED',
+#'OM_INDELSLOG', 'OM_INDELSLOG_F', 'OM_INDELSQRT', 'OM_INDELSRT_F' 
+#'HAM', 'HAM_WIND', 'HAM_WIND_LOG', 'DHAM' 
+#'LCS','LCS_NO', 'LCS_NO_WEIGHTED'
 
 DISTANCE_METRIC = 'LCS_NO_WEIGHTED' 
-DISTANCE_METRIC_1= 'LCS'
+#dissimilarity measures for the other channels, they can be different from the main channel
+DISTANCE_METRIC_1= 'OM_INDELSLOG' 
 DISTANCE_METRIC_2= 'LCS'
 DISTANCE_METRIC_3= 'LCS'
 
@@ -453,32 +500,34 @@ LINKAGE='ward'
 #maximum number of clusters to consider when evaluating cluster quality indicators
 MAX_CLUSTERS = 10 
 #number of clusters to use for the final clustering solution (can be chosen based on the evaluation of cluster quality indicators)
-NUM_CLUSTERS =5 
+NUM_CLUSTERS =8
 
 ##########################################################################################
-######################### SEQUENCE-BASED RISK PREDICTION MODELING ########################
+######################### 6. SEQUENCE-BASED RISK PREDICTION MODELING #####################
 ##########################################################################################
 
 #----PREDICTION TARGET----
-#name of the prediction task: 'target_lrti' or 'target_obs_drugs' or 'target_obesity' or 'target_BMI'
+#name of the prediction task: 'target_lrti' or 'target_obs_drugs' or 'target_obesity' or 'target_bmi'
 PRED_NAME='target_lrti' 
 
 #----PREDICTION FEATURES----
 #possible features are: 'sex','age','cluster','entropy','turbulence','num_transitions','adi','num_subsequences','complexity','variance_of_spell','count', 'months_last_event','last_year_events'
-FEATURES=['age','sex','adi','cluster','entropy','num_transitions','variance_of_spell','complexity','turbulence','months_last_event'] #features to use for prediction
+FEATURES=['age','sex','adi','entropy','num_transitions','variance_of_spell','complexity','turbulence','months_last_event'] #features to use for prediction
 #select categorical features among the FEATURES list, they will be one-hot encoded for prediction
-CAT_FEATURES=['sex','cluster','adi'] #categorical features to use for prediction
+CAT_FEATURES=['sex','adi'] #categorical features to use for prediction
 
 #----PREDICTION MODEL----
-#model to use for prediction: 'logistic_regression' or 'cox_regression' or 'lasso_regression' or 'cox_time_varying' or cox_strata_entropy' or 'cox_time_varying_strata' or 'cox_strata_cluster'
+#model to use for prediction: 
+#'logistic_regression' or 'lasso_regression' 
+#'cox_regression'
+#'cox_time_varying' or 'cox_time_varying_stata'  or 'cox_strata_numerical' or cox_strata_categorical'
 MODEL='cox_regression' 
-#stratification variable for models requiring stratification
+
+#stratification variable for models: 'cox_strata_numerical' or cox_strata_categorical'
 STRATA='last_year_events' 
 
 #----PREDICTION in the MULTICHANNEL setting----
 #flag to use multichannel clusters instead of single channel partitions
-#a different flag is used since features are extractred form a single channel
-if MULTICHANNEL:
-    FLAG=True  
-else:
-    FLAG=False
+#a different flag is used since features are extracted from a single channel
+FLAG_MULTICHANNEL_CLUSTERS=False  
+

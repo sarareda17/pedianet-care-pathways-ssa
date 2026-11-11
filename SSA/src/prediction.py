@@ -1,23 +1,27 @@
-#set up and run prediction models
+###########################################################################################################
+########################################### PREDICTION MODELING ###########################################
+###########################################################################################################
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 ROOT=Path(__file__).parent.parent.parent
+from config import ROOT, CLUSTERING_DIR, CHAR_DIR, PREDICTION_DIR
 CLUSTERING_FOLDER=ROOT/'SSA'/'results'/'sequences'/'sequence_clustering'
 CHAR_FOLDER=ROOT/'SSA'/'results'/'sequences'/'sequence_characteristics'
 PRED_FOLDER=ROOT/'SSA'/'prediction'
-from config import SEQUENCE_NAME, DISTANCE_METRIC, CLUSTERING,LINKAGE,NUM_CLUSTERS,YEARS,SEASON,SEQ_LENGTH,STATES_LABELS, NUM_CHANNELS, TIME_UNIT
-from config import FLAG, PRED_NAME, FEATURES, CAT_FEATURES, MODEL, STRATA
+from config import SEQUENCE_NAME, DISTANCE_METRIC, CLUSTERING,YEARS,SEASON,SEQ_LENGTH,STATES_LABELS, NUM_CHANNELS, TIME_UNIT
+from config import FLAG_MULTICHANNEL_CLUSTERS, PRED_NAME, FEATURES, CAT_FEATURES, MODEL, STRATA
 
 def run_prediction():
     """
     Sets up target variables (follow-up events), extracts patient and trajectory
-    features, performs correlation checks, and fits survival/classification models.
+    features, performs correlation checks, and fits cox proportional hazards survival models.
     """
 
-    ########### SET UP ###########
-    PRED_FOLDER_RESULTS=ROOT/'SSA'/'prediction'/PRED_NAME/SEQUENCE_NAME/DISTANCE_METRIC
+    #folder to store prediction results
+    PRED_FOLDER_RESULTS=PREDICTION_DIR/PRED_NAME/SEQUENCE_NAME/DISTANCE_METRIC
     (PRED_FOLDER_RESULTS).mkdir(parents=True, exist_ok=True)
 
 
@@ -41,7 +45,7 @@ def run_prediction():
     
     print(f'The number of patients included in the prediction dataset is: {len(patients_pred)}/{len(patients_sequences)}')
 
-
+    ############################### TARGET DEFINITION #####################################
 
     if PRED_NAME=='target_lrti':
         #target: patients that have at least 1 LRT macrodiagnoses in the follow up period of 1 year after the end of the sequence
@@ -141,6 +145,7 @@ def run_prediction():
                     # max(0.1, ...) preventing crashes
                     target_patients.loc[patient['pedianet_id'], 'months'] = max(0.1, months_val)
 
+    ############################# FEATURES DEFINITION ######################################
 
     #load features we want to use to predict the target
     features=pd.DataFrame(index=patients_pred['pedianet_id'])
@@ -166,10 +171,11 @@ def run_prediction():
     features['adi']=patients_pred['adi']
 
     ## - cluster labels
-    if FLAG==True:
+    if FLAG_MULTICHANNEL_CLUSTERS==True:
         # Use multichannel cluster labels
         cluster_labels = pd.read_csv(CLUSTERING_FOLDER/f'seq_multichannel_{NUM_CHANNELS}_{TIME_UNIT}_{SEQ_LENGTH}'/f'multi_channel_{CLUSTERING}'/DISTANCE_METRIC/f'cluster_labels_{DISTANCE_METRIC}.csv', index_col='Entity ID')
     else:
+        #load cluster labels from the clustering step
         cluster_labels=pd.read_csv(CLUSTERING_FOLDER/SEQUENCE_NAME/CLUSTERING/DISTANCE_METRIC/f'cluster_labels_{DISTANCE_METRIC}.csv', index_col='Entity ID')
     features['cluster'] = cluster_labels['Cluster'].reindex(features.index)
 
@@ -236,10 +242,10 @@ def run_prediction():
     #choose the dataset based on the model selected
     if MODEL=='logistic_regression' or MODEL=='lasso_regression':
         pred_dataset=pred_dataset_log
-    elif MODEL=='cox_regression' or MODEL=='cox_time_varying_strata' or MODEL=='cox_time_varying' or MODEL=='cox_strata_numerical' or MODEL=='cox_strata_categorical' or MODEL=='cox_strata_cluster':
+    elif MODEL=='cox_regression' or MODEL=='cox_time_varying_strata' or MODEL=='cox_time_varying' or MODEL=='cox_strata_numerical' or MODEL=='cox_strata_categorical':
         pred_dataset=pred_dataset_cox
 
-    ########### DATASET PREPROCESSING ###########
+    ################################# DATASET PREPROCESSING #########################################
     #check for missing values
     missing_values=pred_dataset.isnull().sum()
     print(f"Missing values in the prediction dataset:\n{missing_values}")
@@ -292,9 +298,9 @@ def run_prediction():
     pred_dataset.drop(columns=highly_correlated_features, inplace=True)
     print(f"Highly correlated features removed: {highly_correlated_features}")
 
-
+    print("Colonne disponibili:", list(pred_dataset.columns))
     # summary statistics of entropy across clusters
-    if 'cluster' and 'entropy' in pred_dataset.columns:
+    if ('cluster' in pred_dataset.columns) and ('entropy' in pred_dataset.columns):
         entropy_summary = pred_dataset.groupby('cluster')['entropy'].agg(
             n_patients='count',
             mean='mean',
@@ -342,7 +348,7 @@ def run_prediction():
     numeric_cols = [col for col in pred_dataset.columns if col not in ['target', 'duration'] + cluster_cols + CAT_FEATURES]
 
     if cluster_cols and numeric_cols:
-        from scipy.stats import pointbiserialr,spearmanr
+        from scipy.stats import spearmanr
         corr_matrix = pd.DataFrame(index=cluster_cols, columns=numeric_cols, dtype=float)
 
         for cluster_col in cluster_cols:
@@ -378,7 +384,9 @@ def run_prediction():
 
         plt.savefig(PRED_FOLDER_RESULTS/ 'spearman_correlations_heatmap.png', dpi=300)
 
-    ############ PREDICTION MODEL ############
+    ############################### PREDICTION MODEL  #####################################
+
+    #as an alternative classification models are proposed 
     if MODEL=='logistic_regression':
         #split train and test set stratified by target
         from sklearn.model_selection import train_test_split
@@ -437,8 +445,10 @@ def run_prediction():
         coefficients = coefficients.sort_values(by='Coefficient', ascending=False)
         print(coefficients)
 
+    
+    
+    ############ COX PROPORTIONAL HAZARDS MODEL ############
     elif MODEL=='cox_regression':
-        ############ COX PROPORTIONAL HAZARDS MODEL (full dataset, no train/test split) ############
         from lifelines import CoxPHFitter
         from lifelines.utils import concordance_index
 
@@ -457,7 +467,7 @@ def run_prediction():
         print("\n--- Hazard Ratios ---")
         print(hr_table)
 
-        #plot confidence intervals for hazard ratios
+        ############ 2. HAZARD RATIOS PLOT ############
 
         # Reverse order so the first covariate appears at the top
         df = cph.summary.sort_values(by='exp(coef)', ascending=True)
@@ -511,7 +521,7 @@ def run_prediction():
         plt.savefig(PRED_FOLDER_RESULTS / 'cox_hazard_ratios.png')
         plt.close()
 
-        ############ 2. CONCORDANCE INDEX (in-sample, on full dataset) ############
+        ############ 3. CONCORDANCE INDEX (in-sample, on full dataset) ############
         c_index = concordance_index(
             pred_dataset['duration'],
             -cph.predict_partial_hazard(pred_dataset[features_name]),
@@ -519,9 +529,8 @@ def run_prediction():
         )
         print(f"\nConcordance Index (in-sample): {c_index:.3f}")
 
-        ############ 2. CONCORDANCE INDEX (5-fold Out-of-Sample Cross-Validation) ############
+        ############ 4. CONCORDANCE INDEX (5-fold Out-of-Sample Cross-Validation) ############
         from lifelines.utils import k_fold_cross_validation
-    
 
         # Initialize a fresh model instance with the same regularization penalizer
         cph_cv = CoxPHFitter(penalizer=0.1)
@@ -542,24 +551,15 @@ def run_prediction():
         print(f"\nConcordance Index (5-fold CV): {cv_mean:.3f} ± {cv_sd:.3f}")
         print(f"Per-fold C-indices: {[round(s, 3) for s in cv_scores]}")
 
-        ############ 3. CHECK PROPORTIONAL HAZARDS ASSUMPTION ############
+        ############ 5. CHECK PROPORTIONAL HAZARDS ASSUMPTION ############
         print("\n--- Proportional Hazards Assumption Check ---")
         cph.check_assumptions(pred_dataset[features_name + ['target', 'duration']], 
                             p_value_threshold=0.05)
         
 
-    
 
-        ############ 5. BASELINE HAZARD / CUMULATIVE HAZARD (optional, descriptive) ############
-        cph.baseline_hazard_.plot()
-        plt.title('Baseline Cumulative Hazard')
-        plt.xlabel('Months')
-        plt.ylabel('Cumulative Hazard')
-        plt.savefig(PRED_FOLDER_RESULTS/'cox_baseline_hazard.png')
-        plt.close()
-
+    ############ EXTENDED COX MODEL WITH TIME-VARYING COVARIATES (Andersen-Gill) ############
     elif MODEL=='cox_time_varying':
-        ############ EXTENDED COX MODEL WITH TIME-VARYING COVARIATES (Andersen-Gill) ############
         from lifelines import CoxTimeVaryingFitter
         from lifelines.utils import to_episodic_format, concordance_index
 
@@ -617,8 +617,9 @@ def run_prediction():
         print(f"\n--- Concordance Index (Time-Varying Model) ---")
         print(f"Concordance Index: {c_index:.3f}")
 
+    ############ EXTENDED COX MODEL WITH TIME-VARYING COVARIATES (Andersen-Gill) and strata on is_peak############
     elif MODEL=='cox_time_varying_strata':
-        ############ EXTENDED COX MODEL WITH TIME-VARYING COVARIATES (Andersen-Gill) and strata on is_peak############
+        
         from lifelines import CoxTimeVaryingFitter
         from lifelines.utils import to_episodic_format, concordance_index
 
@@ -860,55 +861,6 @@ def run_prediction():
             plt.savefig(PRED_FOLDER / PRED_NAME / f'cox_{STRATA}_stratified_baseline.png')
             plt.close()  
 
-    elif MODEL == 'cox_strata_cluster':
-        ############ COX PROPORTIONAL HAZARDS MODEL (Stratified by Cluster) ############
-        from lifelines import CoxPHFitter
-        from lifelines.utils import concordance_index
-
-        df_strata = pred_dataset.copy()
-
-        # 1. Exclude 'cluster' from covariates to estimate
-        #cluster is not in the features_name list because it is a categorical variable that has been one-hot encoded into multiple dummy variables
-        df_strata['cluster'] = df_strata[[col for col in df_strata.columns if col.startswith('cluster_')]].idxmax(axis=1).str.replace('cluster_', '').astype(int)
-        features_without_cluster = [f for f in features_name if not f.startswith('cluster_')]
-
-        # 2. Fit the stratified Cox model
-        cph = CoxPHFitter()
-        cph.fit(
-            df_strata[features_without_cluster + ['cluster', 'target', 'duration']],
-            duration_col='duration',
-            event_col='target',
-            strata='cluster'
-        )
-
-        # Full model summary: coefficients, hazard ratios, p-values, 95% CI
-        cph.print_summary()
-
-        ############ 1. HAZARD RATIOS TABLE ############
-        hr_table = cph.summary[['coef', 'exp(coef)', 'p', 
-                                'exp(coef) lower 95%', 'exp(coef) upper 95%']]
-        hr_table = hr_table.sort_values(by='exp(coef)', ascending=False)
-        print("\n--- Hazard Ratios ---")
-        print(hr_table)
-
-        ############ 2. STRATIFIED CONCORDANCE INDEX ############
-        # Compute intra-stratum C-index to evaluate discrimination within matched risk baselines
-        pred_risk = cph.predict_partial_hazard(df_strata[features_without_cluster])
-        df_strata['pred_hazard'] = pred_risk
-
-        c_indices = {}
-        event_counts = {}
-        print("\n--- Concordance Index by Cluster Stratum ---")
-        for s_name, group in df_strata.groupby('cluster'):
-            n_ev = int(group['target'].sum())
-            if n_ev > 0:
-                c_val = concordance_index(group['duration'], -group['pred_hazard'], group['target'])
-                c_indices[s_name] = c_val
-                event_counts[s_name] = n_ev
-                print(f"  * Stratum {s_name}: C-index = {c_val:.3f} ({n_ev} events)")
-
-        stratified_c_index = sum(c_indices[s] * event_counts[s] for s in c_indices) / sum(event_counts.values())
-        print(f"--> Overall Stratified C-index: {stratified_c_index:.3f}")
 
 
 if __name__ == "__main__":

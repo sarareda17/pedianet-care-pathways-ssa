@@ -1,5 +1,5 @@
 ################################################################################################################
-################################# PIPELINE for STATE SEQUENCE ANLYSIS (SSA) ####################################
+################################# PIPELINE for STATE SEQUENCE ANALYSIS (SSA) ####################################
 #################################### and RISK PREDICTION SURVIVAL MODELING ######################################
 ################################################################################################################
 
@@ -16,7 +16,7 @@ independently using the `--step` flag:
    or
    $ python main.py --step all
 
-2. Run ONLY the dataset engineering / trajectory extraction step:
+2. Run ONLY the dataset engineering / sequence extraction step:
    $ python main.py --step dataset
 
 3. Run ONLY sequence analysis, dissimilarity computation, and clustering:
@@ -31,8 +31,7 @@ independently using the `--step` flag:
 """
 
 import argparse
-from THESIS_BREATH.SSA.src.multi_channel_clustering import running_multichannel_clustering
-from config import SEQUENCE_NAME, CHANNEL, DISTANCE_METRIC, NUM_CLUSTERS, MULTICHANNEL
+from config import SEQUENCE_NAME, CHANNEL, DISTANCE_METRIC, NUM_CLUSTERS, MULTICHANNEL, PRED_NAME
 
 # Core step imports from modular scripts
 from dataset_sequences import build_dataset
@@ -60,6 +59,7 @@ def main():
     print(f"Active Channel      : {CHANNEL}")
     print(f"Distance Metric     : {DISTANCE_METRIC}")
     print(f"Clusters (k)        : {NUM_CLUSTERS}")
+    print(f"Prediction Target     : {PRED_NAME}")
     print(f"Selected Step       : {args.step}")
     print("=" * 65 + "\n")
 
