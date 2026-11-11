@@ -1,6 +1,6 @@
 # Code thesis: Multichannel State Sequence Analysis of Care Pathways for Phenotyping and Risk Prediction: A Case Study on Pediatric Respiratory Diseases
 
-The objective of the thesis is to model pediatric respiratory care pathways from routinely collected data using  **State Sequence Analysis (SSA)** and to implement **sequence-based risk prediction** through survival models.
+The objective of the thesis and code is to model pediatric respiratory care pathways from routinely collected data using  **State Sequence Analysis (SSA)** and to implement **sequence-based risk prediction** through survival models.
 
 > The raw data are not included in this repository (sensitive health data). This README only describes how the code is organized.
 
